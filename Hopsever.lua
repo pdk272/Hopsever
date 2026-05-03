@@ -1,16 +1,17 @@
 --[[ 
-    BRAINROT V13 - ALL IN ONE TESTER
-    - Velocity Speed (An Toàn)
-    - Fast Steal (Ép 0s)
-    - Smart Finder (Dừng ngay khi thấy, báo tên)
+    BRAINROT V14 - THE ENDGAME HUNTER
+    - Auto Hop liên tục nếu không có Pet
+    - Teleport thẳng tới Pet nếu tìm thấy
+    - Autoexec thân thiện
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
--- DANH SÁCH PET VIP CỦA BẠN
 local TargetPets = {
     ["La Secret Combinasion"] = true,
     ["Lavadorito Spinito"] = true,
@@ -28,141 +29,88 @@ local TargetPets = {
     ["La Casa Boo"] = true
 }
 
--- XÓA GUI CŨ & TẠO GUI MỚI KHÔNG MẤT KHI CHẾT
-if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_V13") then
-    LocalPlayer.PlayerGui.Brainrot_V13:Destroy()
+-- KHỞI TẠO GUI
+if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_V14") then
+    LocalPlayer.PlayerGui.Brainrot_V14:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Brainrot_V13"
+ScreenGui.Name = "Brainrot_V14"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 260, 0, 260)
-Main.Position = UDim2.new(0.5, -130, 0.4, -130)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.Size = UDim2.new(0, 260, 0, 150)
+Main.Position = UDim2.new(0.5, -130, 0.4, -75)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.Active = true
 Main.Draggable = true
 Main.Parent = ScreenGui
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "BRAINROT V13 - FINDER"
-Title.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.Parent = Main
-
--- BẢNG THÔNG BÁO TÌM PET
 local LogLabel = Instance.new("TextLabel")
-LogLabel.Size = UDim2.new(1, -20, 0, 50)
-LogLabel.Position = UDim2.new(0, 10, 0, 40)
-LogLabel.Text = "Chưa quét..."
-LogLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+LogLabel.Size = UDim2.new(1, 0, 1, 0)
+LogLabel.Text = "Đang khởi động Máy Quét..."
+LogLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
 LogLabel.BackgroundTransparency = 1
+LogLabel.Font = Enum.Font.GothamBold
+LogLabel.TextSize = 16
 LogLabel.TextWrapped = true
-LogLabel.Font = Enum.Font.SourceSansBold
-LogLabel.TextSize = 18
 LogLabel.Parent = Main
 
--- --- CHỨC NĂNG TÌM KIẾM (SMART FINDER) ---
-local function ScanTarget()
-    LogLabel.Text = "Đang quét server..."
-    LogLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    task.wait(0.1) -- Tạo độ trễ xíu để UI cập nhật chữ
+-- --- HÀM NHẢY SERVER ---
+local function ServerHop()
+    LogLabel.Text = "Không có mục tiêu!\nĐang tìm Server mới..."
+    LogLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
     
-    local foundPetName = nil
+    local PlaceId = game.PlaceId
+    local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
     
-    -- Quét toàn bộ map
+    for _, s in pairs(Servers.data) do
+        if s.playing < s.maxPlayers and s.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
+            break
+        end
+    end
+end
+
+-- --- HÀM QUÉT VÀ DỊCH CHUYỂN ---
+local function ExecuteHunter()
+    local foundPet = nil
+    
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if TargetPets[v.Name] then
-            foundPetName = v.Name
-            
-            -- Sáng đèn con pet đó
-            local hl = v:FindFirstChild("HunterHighlight") or Instance.new("Highlight", v)
-            hl.Name = "HunterHighlight"
-            hl.FillColor = Color3.fromRGB(255, 0, 0)
-            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-            
-            -- DỪNG NGAY QUÁ TRÌNH QUÉT (break thoát khỏi vòng lặp)
+            foundPet = v
             break 
         end
     end
     
-    if foundPetName then
-        LogLabel.Text = "ĐÃ TÌM THẤY:\n" .. foundPetName
+    if foundPet then
+        LogLabel.Text = "MỤC TIÊU XUẤT HIỆN:\n" .. foundPet.Name .. "\nĐANG DỊCH CHUYỂN..."
         LogLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        -- Tiếng báo động
+        
+        -- Báo động
         local s = Instance.new("Sound", game.Workspace)
         s.SoundId = "rbxassetid://138090596"
-        s.Volume = 2
+        s.Volume = 3
         s:Play()
+        
+        -- DỊCH CHUYỂN NHÂN VẬT ĐẾN NGAY CHỖ PET
+        pcall(function()
+            local root = LocalPlayer.Character.HumanoidRootPart
+            if foundPet:IsA("BasePart") then
+                root.CFrame = foundPet.CFrame
+            elseif foundPet:IsA("Model") and foundPet.PrimaryPart then
+                root.CFrame = foundPet.PrimaryPart.CFrame
+            end
+        end)
     else
-        LogLabel.Text = "Không có Pet VIP nào ở server này."
-        LogLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        -- Trễ 1 chút để tránh bị game kick vì spam nhảy quá nhanh
+        task.wait(1.5) 
+        ServerHop()
     end
 end
 
-local ScanBtn = Instance.new("TextButton")
-ScanBtn.Size = UDim2.new(0, 200, 0, 40)
-ScanBtn.Position = UDim2.new(0.5, -100, 0, 95)
-ScanBtn.Text = "BẤM ĐỂ QUÉT PET"
-ScanBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 200)
-ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ScanBtn.Font = Enum.Font.GothamBold
-ScanBtn.Parent = Main
-ScanBtn.MouseButton1Click:Connect(ScanTarget)
-
--- --- CHỨC NĂNG SPEED VÀ FAST STEAL ---
-local SpeedValue = 16
-local SpeedSlider = Instance.new("TextButton")
-SpeedSlider.Size = UDim2.new(0, 200, 0, 30)
-SpeedSlider.Position = UDim2.new(0.5, -100, 0, 145)
-SpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpeedSlider.Text = "Speed: 16 (Kéo để tăng)"
-SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedSlider.Parent = Main
-
-local Fill = Instance.new("Frame")
-Fill.Size = UDim2.new(0, 0, 1, 0)
-Fill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-Fill.Parent = SpeedSlider
-
-SpeedSlider.MouseButton1Down:Connect(function()
-    local move = game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            local percent = math.clamp((input.Position.X - SpeedSlider.AbsolutePosition.X) / SpeedSlider.AbsoluteSize.X, 0, 1)
-            Fill.Size = UDim2.new(percent, 0, 1, 0)
-            SpeedValue = 16 + (percent * 34)
-            SpeedSlider.Text = "Speed: " .. math.floor(SpeedValue)
-        end
-    end)
-    game:GetService("UserInputService").InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then move:Disconnect() end end)
-end)
-
--- Vòng lặp Velocity Speed an toàn
-RunService.Stepped:Connect(function()
-    pcall(function()
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root and hum and hum.MoveDirection.Magnitude > 0 then
-            root.Velocity = Vector3.new(hum.MoveDirection.X * SpeedValue, root.Velocity.Y, hum.MoveDirection.Z * SpeedValue)
-        end
-    end)
-end)
-
-local FastStealBtn = Instance.new("TextButton")
-FastStealBtn.Size = UDim2.new(0, 200, 0, 40)
-FastStealBtn.Position = UDim2.new(0.5, -100, 0, 185)
-FastStealBtn.Text = "Fast Steal: BẬT (Auto)"
-FastStealBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FastStealBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FastStealBtn.Font = Enum.Font.GothamBold
-FastStealBtn.Parent = Main
-
--- Fast Steal chạy ngầm và ép lệnh ngay khi chạm nút E
+-- --- FAST STEAL (LUÔN BẬT) ---
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     if fireproximityprompt then
         fireproximityprompt(prompt)
@@ -172,8 +120,12 @@ ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     end
 end)
 
--- Tự động quét 1 lần ngay khi bật script
+-- Tự động chạy ngay khi load vào server
 task.spawn(function()
-    task.wait(1)
-    ScanTarget()
+    -- Đợi game load xong hẳn địa hình (rất quan trọng để không bị lỗi xuyên map)
+    if not game:IsLoaded() then
+        game.Loaded:Wait()
+    end
+    task.wait(2) 
+    ExecuteHunter()
 end)
