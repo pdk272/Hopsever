@@ -1,113 +1,131 @@
--- Khoi tao GUI
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local SpeedLabel = Instance.new("TextLabel")
-local SpeedSlider = Instance.new("TextButton")
-local SpeedIndicator = Instance.new("Frame")
-local PickToggle = Instance.new("TextButton")
+--[[ 
+    BRAINROT CUSTOM V5 - OPTIMIZED
+    Khắc phục lỗi F9 và Tối ưu Speed/Pick E
+]]
 
-ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Tạo GUI trực tiếp vào PlayerGui để tránh lỗi quyền truy cập CoreGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Brainrot_V5"
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Khung chinh
-MainFrame.Name = "Main"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Position = UDim2.new(0.4, 0, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 220, 0, 200)
-MainFrame.Active = true
-MainFrame.Draggable = true
+-- Khung Menu
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 230, 0, 200)
+Main.Position = UDim2.new(0.5, -115, 0.4, -100)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Main.BorderSizePixel = 2
+Main.Active = true
+Main.Draggable = true
+Main.Parent = ScreenGui
 
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-Title.Text = "BRAINROT CUSTOM V4"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Title.Text = "BRAINROT ULTIMATE V5"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = Main
 
--- BIEN DIEU KHIEN
+-- BIẾN HỆ THỐNG
 local TargetSpeed = 16
-local PickNearest = false
-local PickRange = 25 -- Khoang cach de pick E (met)
+local SmartPickEnabled = false
+local PickRange = 30 
 
--- SPEED SLIDER (Thanh keo)
-SpeedLabel.Parent = MainFrame
-SpeedLabel.Position = UDim2.new(0, 10, 0, 45)
-SpeedLabel.Size = UDim2.new(0, 200, 0, 20)
-SpeedLabel.Text = "Speed: 16"
-SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedLabel.BackgroundTransparency = 1
+-- PHẦN SPEED (THANH KÉO)
+local SpeedText = Instance.new("TextLabel")
+SpeedText.Size = UDim2.new(1, 0, 0, 25)
+SpeedText.Position = UDim2.new(0, 0, 0, 40)
+SpeedText.Text = "Tốc độ: 16"
+SpeedText.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedText.BackgroundTransparency = 1
+SpeedText.Parent = Main
 
-SpeedSlider.Parent = MainFrame
-SpeedSlider.Position = UDim2.new(0, 10, 0, 70)
-SpeedSlider.Size = UDim2.new(0, 200, 0, 10)
-SpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpeedSlider.Text = ""
+local SliderBack = Instance.new("Frame")
+SliderBack.Size = UDim2.new(0, 180, 0, 10)
+SliderBack.Position = UDim2.new(0.5, -90, 0, 70)
+SliderBack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SliderBack.Parent = Main
 
-SpeedIndicator.Parent = SpeedSlider
-SpeedIndicator.Size = UDim2.new(0, 5, 1.5, 0)
-SpeedIndicator.Position = UDim2.new(0, 0, -0.25, 0)
-SpeedIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+local SliderBtn = Instance.new("TextButton")
+SliderBtn.Size = UDim2.new(0, 15, 0, 20)
+SliderBtn.Position = UDim2.new(0, 0, 0.5, -10)
+SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+SliderBtn.Text = ""
+SliderBtn.Parent = SliderBack
 
--- Logic keo thanh Speed
-local UIS = game:GetService("UserInputService")
+-- Logic Slider
 local dragging = false
+SliderBtn.MouseButton1Down:Connect(function() dragging = true end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
-SpeedSlider.MouseButton1Down:Connect(function() dragging = true end)
-UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-
-UIS.InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local pos = math.clamp((input.Position.X - SpeedSlider.AbsolutePosition.X) / SpeedSlider.AbsoluteSize.X, 0, 1)
-        SpeedIndicator.Position = UDim2.new(pos, -2, -0.25, 0)
-        TargetSpeed = math.floor(16 + (pos * 134)) -- Min 16, Max 150
-        SpeedLabel.Text = "Speed: " .. tostring(TargetSpeed)
+        local relativeX = math.clamp(input.Position.X - SliderBack.AbsolutePosition.X, 0, SliderBack.AbsoluteSize.X)
+        local percent = relativeX / SliderBack.AbsoluteSize.X
+        SliderBtn.Position = UDim2.new(percent, -7, 0.5, -10)
+        TargetSpeed = math.floor(16 + (percent * 134)) -- Max 150
+        SpeedText.Text = "Tốc độ: " .. TargetSpeed
     end
 end)
 
--- Duy tri Speed
-game:GetService("RunService").Heartbeat:Connect(function()
+-- Ép Speed (Dùng Stepped để bypass chống hack cơ bản)
+RunService.Stepped:Connect(function()
     pcall(function()
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = TargetSpeed
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = TargetSpeed
         end
     end)
 end)
 
--- PICK E GAN TOI
-PickToggle.Parent = MainFrame
-PickToggle.Position = UDim2.new(0, 10, 0, 100)
-PickToggle.Size = UDim2.new(0, 200, 0, 40)
-PickToggle.Text = "Smart Pick E: OFF"
-PickToggle.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+-- PHẦN SMART PICK E
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 180, 0, 40)
+ToggleBtn.Position = UDim2.new(0.5, -90, 0, 110)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+ToggleBtn.Text = "Smart Pick E: TẮT"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Parent = Main
 
-PickToggle.MouseButton1Click:Connect(function()
-    PickNearest = not PickNearest
-    PickToggle.Text = PickNearest and "Smart Pick E: ON" or "Smart Pick E: OFF"
-    PickToggle.BackgroundColor3 = PickNearest and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+ToggleBtn.MouseButton1Click:Connect(function()
+    SmartPickEnabled = not SmartPickEnabled
+    ToggleBtn.Text = SmartPickEnabled and "Smart Pick E: BẬT" or "Smart Pick E: TẮT"
+    ToggleBtn.BackgroundColor3 = SmartPickEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
 end)
 
--- Vong lap quet E o gan
-spawn(function()
-    while task.wait(0.2) do
-        if PickNearest then
+-- Logic Pick E tối ưu (Dùng ProximityPromptService)
+task.spawn(function()
+    while true do
+        if SmartPickEnabled then
             pcall(function()
-                local myPos = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
-                for _, v in pairs(game.Workspace:GetDescendants()) do
-                    if v:IsA("ProximityPrompt") then
-                        local dist = (v.Parent:IsA("BasePart") and (v.Parent.Position - myPos).Magnitude) or 100
-                        if dist <= PickRange then
-                            v.HoldDuration = 0
-                        else
-                            -- Tra lai thoi gian goc neu o xa de do lag
-                            v.HoldDuration = 2 
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    -- Quét tất cả Prompt đang có trong game (Rất nhẹ)
+                    for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
+                        local parentPart = prompt.Parent
+                        if parentPart and parentPart:IsA("BasePart") then
+                            local distance = (parentPart.Position - root.Position).Magnitude
+                            if distance <= PickRange then
+                                prompt.HoldDuration = 0 -- Nhặt ngay lập tức
+                            else
+                                -- Nếu ở xa thì trả lại mặc định để tránh lỗi game
+                                prompt.HoldDuration = 2 
+                            end
                         end
                     end
                 end
             end)
         end
+        task.wait(0.5) -- Quét mỗi 0.5 giây để không lag
     end
 end)
 
-print("Da kich hoat Smart Script V4")
+print("Brainrot Custom V5 đã tải thành công!")
