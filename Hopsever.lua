@@ -1,8 +1,8 @@
 --[[ 
-    BRAINROT V14 - THE ENDGAME HUNTER
-    - Auto Hop liên tục nếu không có Pet
-    - Teleport thẳng tới Pet nếu tìm thấy
-    - Autoexec thân thiện
+    BRAINROT V15 - STABLE HUNTER
+    - Fix Server Hop: Tránh server full
+    - Stop & Alert: Thấy Pet là dừng nhảy, báo động (Không Tele)
+    - Improved Speed: Tốc độ mượt, không gây dead
 ]]
 
 local Players = game:GetService("Players")
@@ -12,6 +12,7 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
+-- DANH SÁCH PET VIP
 local TargetPets = {
     ["La Secret Combinasion"] = true,
     ["Lavadorito Spinito"] = true,
@@ -30,53 +31,62 @@ local TargetPets = {
 }
 
 -- KHỞI TẠO GUI
-if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_V14") then
-    LocalPlayer.PlayerGui.Brainrot_V14:Destroy()
+if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_V15") then
+    LocalPlayer.PlayerGui.Brainrot_V15:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Brainrot_V14"
+ScreenGui.Name = "Brainrot_V15"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame")
 Main.Size = UDim2.new(0, 260, 0, 150)
-Main.Position = UDim2.new(0.5, -130, 0.4, -75)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Main.Active = true
+Main.Position = UDim2.new(0, 20, 0, 20) -- Đưa lên góc cho đỡ vướng
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 Main.Draggable = true
+Main.Active = true
 Main.Parent = ScreenGui
 
 local LogLabel = Instance.new("TextLabel")
 LogLabel.Size = UDim2.new(1, 0, 1, 0)
-LogLabel.Text = "Đang khởi động Máy Quét..."
-LogLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+LogLabel.Text = "Đang quét server..."
+LogLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 LogLabel.BackgroundTransparency = 1
 LogLabel.Font = Enum.Font.GothamBold
-LogLabel.TextSize = 16
+LogLabel.TextSize = 14
 LogLabel.TextWrapped = true
 LogLabel.Parent = Main
 
--- --- HÀM NHẢY SERVER ---
+-- --- HÀM NHẢY SERVER THÔNG MINH ---
 local function ServerHop()
-    LogLabel.Text = "Không có mục tiêu!\nĐang tìm Server mới..."
-    LogLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    
+    LogLabel.Text = "Không có Pet.\nĐang tìm phòng trống..."
     local PlaceId = game.PlaceId
-    local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
     
-    for _, s in pairs(Servers.data) do
-        if s.playing < s.maxPlayers and s.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
-            break
+    -- Lấy danh sách server và lọc những server còn ít nhất 3 chỗ trống
+    local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=50"
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+    
+    if success and result and result.data then
+        for _, s in pairs(result.data) do
+            -- s.playing là số người hiện có, s.maxPlayers là tối đa. 
+            -- Chỉ vào server có ít nhất 2 chỗ trống để tránh bị Full khi đang vào.
+            if s.playing < (s.maxPlayers - 2) and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
+                return
+            end
         end
     end
+    -- Nếu không tìm được server đẹp, thử lại sau 3 giây
+    task.wait(3)
+    ServerHop()
 end
 
--- --- HÀM QUÉT VÀ DỊCH CHUYỂN ---
-local function ExecuteHunter()
+-- --- HÀM THỰC THI (QUÉT VÀ DỪNG) ---
+local function StartHunting()
     local foundPet = nil
-    
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if TargetPets[v.Name] then
             foundPet = v
@@ -85,32 +95,44 @@ local function ExecuteHunter()
     end
     
     if foundPet then
-        LogLabel.Text = "MỤC TIÊU XUẤT HIỆN:\n" .. foundPet.Name .. "\nĐANG DỊCH CHUYỂN..."
-        LogLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        -- KHI THẤY PET: DỪNG NHẢY SERVER VÀ BÁO ĐỘNG
+        LogLabel.Text = "!!! PHÁT HIỆN !!!\n" .. foundPet.Name .. "\nHÃY ĐI LẤY NGAY!"
+        LogLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
         
-        -- Báo động
-        local s = Instance.new("Sound", game.Workspace)
-        s.SoundId = "rbxassetid://138090596"
-        s.Volume = 3
-        s:Play()
+        -- Tạo Highlight cho Pet
+        local hl = Instance.new("Highlight", foundPet)
+        hl.FillColor = Color3.fromRGB(255, 0, 0)
         
-        -- DỊCH CHUYỂN NHÂN VẬT ĐẾN NGAY CHỖ PET
-        pcall(function()
-            local root = LocalPlayer.Character.HumanoidRootPart
-            if foundPet:IsA("BasePart") then
-                root.CFrame = foundPet.CFrame
-            elseif foundPet:IsA("Model") and foundPet.PrimaryPart then
-                root.CFrame = foundPet.PrimaryPart.CFrame
-            end
-        end)
+        -- Phát chuông báo động liên tục 5 lần
+        for i = 1, 5 do
+            local s = Instance.new("Sound", game.Workspace)
+            s.SoundId = "rbxassetid://138090596"
+            s.Volume = 2
+            s:Play()
+            task.wait(0.5)
+        end
     else
-        -- Trễ 1 chút để tránh bị game kick vì spam nhảy quá nhanh
-        task.wait(1.5) 
+        -- Không có pet thì đợi 2 giây rồi nhảy phòng
+        task.wait(2)
         ServerHop()
     end
 end
 
--- --- FAST STEAL (LUÔN BẬT) ---
+-- --- SPEED VELOCITY (FIXED) ---
+local Speed = 25 -- Mức an toàn để không bị dead
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local root = char.HumanoidRootPart
+        local hum = char.Humanoid
+        if hum.MoveDirection.Magnitude > 0 then
+            -- Ép lực di chuyển vào Vector Velocity
+            root.Velocity = Vector3.new(hum.MoveDirection.X * Speed, root.Velocity.Y, hum.MoveDirection.Z * Speed)
+        end
+    end)
+end)
+
+-- --- FAST STEAL ---
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     if fireproximityprompt then
         fireproximityprompt(prompt)
@@ -120,12 +142,9 @@ ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     end
 end)
 
--- Tự động chạy ngay khi load vào server
+-- Chạy khi load xong
 task.spawn(function()
-    -- Đợi game load xong hẳn địa hình (rất quan trọng để không bị lỗi xuyên map)
-    if not game:IsLoaded() then
-        game.Loaded:Wait()
-    end
-    task.wait(2) 
-    ExecuteHunter()
+    if not game:IsLoaded() then game.Loaded:Wait() end
+    task.wait(1)
+    StartHunting()
 end)
