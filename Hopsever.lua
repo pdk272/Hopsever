@@ -1,9 +1,9 @@
 --[[ 
-    BRAINROT V19 - TRẢM ĐỊNH (XENO PC AUTOEXEC)
-    - Tự chạy 100%, không cần bấm nút.
-    - Khóa chết hàm Server Hop khi thấy Pet (An toàn tuyệt đối).
-    - Phá giới hạn Speed khi cầm Pet.
-    - Fast Steal: Bấm E là lấy ngay lập tức.
+    BRAINROT V20 - GHOST HUNTER (XENO PC)
+    - Auto-Pickup: Đứng gần là tự nhặt (Không cần bấm phím).
+    - Turbo Server Hop: Nhảy liên tục, bỏ qua server full, chống treo.
+    - Massless Speed 30: Tự động xóa trọng lượng Pet để đi nhanh hơn.
+    - Anti-Hop Safety: Khóa nhảy server ngay khi phát hiện Pet VIP.
 ]]
 
 local Players = game:GetService("Players")
@@ -11,7 +11,6 @@ local RunService = game:GetService("RunService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 local TargetPets = {
@@ -22,139 +21,103 @@ local TargetPets = {
     ["Burguro and Fryuro"] = true, ["La Casa Boo"] = true
 }
 
--- BIẾN KHÓA AN TOÀN (Cực kỳ quan trọng)
-_G.PetFound = false
+_G.StopHop = false -- Chốt an toàn để dừng nhảy server
 
--- KHỞI TẠO GUI (Vào PlayerGui)
+-- --- 1. GIAO DIỆN CHUẨN ---
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-if PlayerGui:FindFirstChild("Brainrot_V19") then PlayerGui.Brainrot_V19:Destroy() end
+if PlayerGui:FindFirstChild("Ghost_V20") then PlayerGui.Ghost_V20:Destroy() end
+local ScreenGui = Instance.new("ScreenGui", PlayerGui); ScreenGui.Name = "Ghost_V20"; ScreenGui.ResetOnSpawn = false
+local Main = Instance.new("Frame", ScreenGui); Main.Size = UDim2.new(0, 260, 0, 100); Main.Position = UDim2.new(0.5, -130, 0, 10); Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10); Main.Draggable = true; Main.Active = true
+local Status = Instance.new("TextLabel", Main); Status.Size = UDim2.new(1, 0, 1, 0); Status.TextColor3 = Color3.fromRGB(255, 255, 255); Status.BackgroundTransparency = 1; Status.Font = Enum.Font.GothamBold; Status.TextSize = 14; Status.TextWrapped = true
 
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.Name = "Brainrot_V19"
-ScreenGui.ResetOnSpawn = false
-
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 260, 0, 120)
-Main.Position = UDim2.new(0.5, -130, 0, 20) -- Đưa lên mép trên cho gọn
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Main.BorderSizePixel = 2
-Main.BorderColor3 = Color3.fromRGB(255, 0, 0)
-Main.Active = true
-Main.Draggable = true
-
-local Status = Instance.new("TextLabel", Main)
-Status.Size = UDim2.new(1, 0, 1, 0)
-Status.Text = "Đang tải bản đồ..."
-Status.TextColor3 = Color3.fromRGB(0, 255, 255)
-Status.BackgroundTransparency = 1
-Status.Font = Enum.Font.GothamBold
-Status.TextSize = 15
-Status.TextWrapped = true
-
--- --- 1. TỐC ĐỘ BẤT CHẤP (Không bị chậm khi cầm Pet) ---
-RunService.RenderStepped:Connect(function()
-    pcall(function()
-        local char = LocalPlayer.Character
-        local root = char.HumanoidRootPart
-        local hum = char.Humanoid
-        -- Chỉ đẩy tới khi bạn bấm phím di chuyển
-        if hum.MoveDirection.Magnitude > 0 then
-            -- Hệ số 0.25 bù vào tốc độ gốc, tương đương Speed ~35. Không quan tâm game ép đi chậm cỡ nào.
-            root.CFrame = root.CFrame + (hum.MoveDirection * 0.25)
-        end
-    end)
-end)
-
--- --- 2. FAST STEAL (Ép phím E từ bàn phím) ---
-UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if not isProcessed and input.KeyCode == Enum.KeyCode.E then
+-- --- 2. AUTO-PICKUP (FAST STEAL THẬT SỰ) ---
+task.spawn(function()
+    while task.wait(0.1) do
         pcall(function()
             local root = LocalPlayer.Character.HumanoidRootPart
             for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
-                -- Nếu đứng cách vật phẩm dưới 25 studs, ép nhặt ngay
-                if prompt.Parent and (prompt.Parent.Position - root.Position).Magnitude < 25 then
-                    if fireproximityprompt then
+                local part = prompt.Parent
+                if part and part:IsA("BasePart") then
+                    local dist = (part.Position - root.Position).Magnitude
+                    if dist < 20 then -- Khoảng cách nhặt đồ
+                        -- Tự động kích hoạt không cần bấm phím
                         fireproximityprompt(prompt, 1, true)
+                        prompt:InputBegan()
+                        task.wait()
+                        prompt:InputEnded()
                     end
-                    -- Giả lập kịch bản dự phòng nếu fireproximityprompt bị trễ
-                    prompt:InputBegan()
-                    task.wait(0.05)
-                    prompt:InputEnded()
                 end
             end
         end)
     end
 end)
 
--- --- 3. AUTO HOP & FINDER (Khóa chết khi có Pet) ---
-local function ServerHop()
-    -- CHỐT AN TOÀN: Nếu đã thấy Pet, DỪNG NGAY LẬP TỨC toàn bộ lệnh nhảy
-    if _G.PetFound then return end 
+-- --- 3. MASSLESS SPEED 30 (CHỐNG CHẬM KHI CẦM PET) ---
+RunService.Stepped:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local root = char.HumanoidRootPart
+        local hum = char.Humanoid
+        
+        -- Xóa trọng lượng tất cả vật phẩm đang cầm
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.Massless = true end
+        end
+        
+        if hum.MoveDirection.Magnitude > 0 then
+            root.CFrame = root.CFrame + (hum.MoveDirection * (30 - 16) * 0.015)
+        end
+    end)
+end)
 
-    Status.Text = "Phòng trống.\nĐang nhảy Server..."
-    Status.TextColor3 = Color3.fromRGB(150, 150, 150)
+-- --- 4. TURBO SERVER HOP (CHỐNG TREO) ---
+local function ServerHop()
+    if _G.StopHop then return end
+    Status.Text = "🔍 Đang tìm server trống mới..."
     
     local PlaceId = game.PlaceId
-    local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    -- Lấy 100 server mới nhất, sắp xếp ngẫu nhiên để tránh trùng
+    local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
     local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
     
     if success and result and result.data then
         for _, s in pairs(result.data) do
-            -- Vào server trống ít nhất 3 chỗ
+            -- Chỉ vào server còn ít nhất 3 chỗ trống
             if s.playing < (s.maxPlayers - 3) and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
-                task.wait(5)
-                ServerHop() -- Gọi lại nếu bị kẹt
-                return
+                Status.Text = "🚀 Đang nhảy tới Server: " .. s.id
+                local tpSuccess, tpError = pcall(function()
+                    TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
+                end)
+                task.wait(4) -- Đợi 4 giây, nếu không nhảy được thì tiếp tục tìm server khác
             end
         end
     end
-    task.wait(2)
-    ServerHop()
+    task.wait(1)
+    ServerHop() -- Vòng lặp liên tục nếu bị lỗi
 end
 
-local function AutoScan()
-    local foundPet = nil
+-- --- 5. SMART FINDER ---
+local function StartHunting()
+    local found = nil
     for _, v in pairs(game.Workspace:GetDescendants()) do
-        if TargetPets[v.Name] then
-            foundPet = v
-            break 
-        end
+        if TargetPets[v.Name] then found = v; break end
     end
     
-    if foundPet then
-        -- KÍCH HOẠT CHỐT AN TOÀN
-        _G.PetFound = true 
-        
-        Main.BorderColor3 = Color3.fromRGB(0, 255, 0)
-        Status.Text = "🔥🔥 THẤY PET VIP 🔥🔥\n" .. foundPet.Name .. "\nĐÃ KHÓA SERVER HOP!"
+    if found then
+        _G.StopHop = true -- DỪNG NHẢY NGAY LẬP TỨC
+        Status.Text = "🔥🔥 THẤY PET VIP: " .. found.Name .. " 🔥🔥"
         Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-        
-        local hl = Instance.new("Highlight", foundPet)
-        hl.FillColor = Color3.fromRGB(255, 0, 0)
-        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-        
-        -- Hú chuông 5 lần
-        for i = 1, 5 do
-            local s = Instance.new("Sound", game.Workspace)
-            s.SoundId = "rbxassetid://138090596"
-            s.Volume = 3
-            s:Play()
-            task.wait(0.5)
-        end
+        local hl = Instance.new("Highlight", found); hl.FillColor = Color3.fromRGB(255, 0, 0)
+        for i = 1, 3 do local s = Instance.new("Sound", game.Workspace); s.SoundId = "rbxassetid://138090596"; s:Play(); task.wait(0.5) end
     else
-        -- Không thấy mới cho nhảy
-        task.wait(1.5)
+        task.wait(2) -- Đợi load map
         ServerHop()
     end
 end
 
--- Tự động chạy ngay sau khi load map (Dành cho Autoexec)
+-- Tự động chạy
 task.spawn(function()
     if not game:IsLoaded() then game.Loaded:Wait() end
-    Status.Text = "Chuẩn bị quét sau 3 giây..."
-    task.wait(3) -- Chờ 3 giây để mọi vật phẩm rơi xuống map đầy đủ
-    AutoScan()
+    task.wait(3)
+    StartHunting()
 end)
-
-print("V19 - Đã sẵn sàng chiến đấu!")
