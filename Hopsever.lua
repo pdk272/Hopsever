@@ -1,69 +1,56 @@
+--[[ 
+    RAPID FIRE TOOL (ÉP SÚNG LIÊN THANH)
+    - Nhấn giữ chuột trái để xả đạn.
+    - Ép Tool kích hoạt liên tục bỏ qua độ trễ click chuột.
+]]
+
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
-local savedLocation = nil
 
--- TẠO GUI GỌN NHẸ NHẤT
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-if PlayerGui:FindFirstChild("ChiMotScriptTele") then 
-    PlayerGui.ChiMotScriptTele:Destroy() 
-end
+local isRapidFiring = false
+local spamThread = nil
 
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.Name = "ChiMotScriptTele"
-ScreenGui.ResetOnSpawn = false
+-- Độ trễ giữa các phát bắn (Để 0.05 là nhanh gấp chục lần bình thường)
+local FIRE_DELAY = 0.05 
 
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 180, 0, 95)
-Main.Position = UDim2.new(0.5, -90, 0, 20)
-Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Main.Draggable = true
-Main.Active = true
+print("🔫 Đã nạp Auto Rapid Fire! Cầm súng lên và giữ chuột trái.")
 
-local SaveBtn = Instance.new("TextButton", Main)
-SaveBtn.Size = UDim2.new(1, -10, 0, 40)
-SaveBtn.Position = UDim2.new(0, 5, 0, 5)
-SaveBtn.Text = "1. LƯU BASE"
-SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
-SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SaveBtn.Font = Enum.Font.GothamBold
-
-local TeleBtn = Instance.new("TextButton", Main)
-TeleBtn.Size = UDim2.new(1, -10, 0, 40)
-TeleBtn.Position = UDim2.new(0, 5, 0, 50)
-TeleBtn.Text = "2. TELE VỀ"
-TeleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-TeleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleBtn.Font = Enum.Font.GothamBold
-
--- CHỨC NĂNG LƯU
-SaveBtn.MouseButton1Click:Connect(function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        savedLocation = char.HumanoidRootPart.CFrame
-        SaveBtn.Text = "ĐÃ LƯU!"
-        task.wait(1)
-        SaveBtn.Text = "1. LƯU BASE"
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+    if isProcessed then return end
+    
+    -- Khi nhấn giữ chuột trái
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local char = LocalPlayer.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        
+        -- Nếu đang cầm súng trên tay thì bắt đầu xả đạn
+        if tool then
+            isRapidFiring = true
+            spamThread = task.spawn(function()
+                while isRapidFiring and char:FindFirstChild(tool.Name) do
+                    tool:Activate() -- Ép súng bóp cò
+                    task.wait(FIRE_DELAY)
+                end
+            end)
+        end
     end
 end)
 
--- CHỨC NĂNG TELE (CHỐNG GIẬT LẠI CHỖ CŨ)
-TeleBtn.MouseButton1Click:Connect(function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and savedLocation then
-        local root = char.HumanoidRootPart
+UserInputService.InputEnded:Connect(function(input)
+    -- Khi nhả chuột trái thì ngừng bắn
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isRapidFiring = false
+        if spamThread then
+            task.cancel(spamThread)
+            spamThread = nil
+        end
         
-        -- Bước 1: Triệt tiêu mọi lực vật lý đang tác động
-        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        
-        -- Bước 2: Đóng băng nhân vật
-        root.Anchored = true 
-        
-        -- Bước 3: Di chuyển cả cụm nhân vật (an toàn hơn CFrame thường)
-        char:PivotTo(savedLocation)
-        
-        -- Bước 4: Đợi một nhịp cực nhỏ để ép Server chốt vị trí mới, sau đó mở băng
-        task.wait(0.1)
-        root.Anchored = false
+        -- Báo cho súng biết là đã nhả cò (để tránh bị kẹt đạn)
+        local char = LocalPlayer.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        if tool then
+            tool:Deactivate()
+        end
     end
 end)
