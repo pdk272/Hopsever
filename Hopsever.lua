@@ -1,16 +1,15 @@
 --[[ 
-    BRAINROT V22 - TWEEN & OPTIMIZED HUNTER
-    - 0% LAG: Chỉ quét 1 lần, không lặp lại ngu ngốc.
-    - Tween Fly: Bay lướt như chim, không dịch chuyển tức thời -> Tránh bị Dead.
-    - Noclip: Bay xuyên mọi địa hình.
-    - Fast Steal: Tới nơi nhặt ngay lập tức.
+    STEAL A BRAINROT: DESYNC PANEL
+    - Auto Blink Steal: Ngồi nhà, thấy Pet tự giật bóng ma ra lấy rồi về.
+    - Custom Tool: Cấp 1 Tool "Bóng Ma Desync" vào balo để bạn tự tạo Clone và đi dạo.
 ]]
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
+-- Danh sách Brainrot VIP của bạn
 local TargetPets = {
     ["La Secret Combinasion"] = true, ["Lavadorito Spinito"] = true, ["Garama and Madundung"] = true,
     ["Ketchuru and Musturu"] = true, ["Ketupat Kepat"] = true, ["Tang Tang Keletang"] = true,
@@ -19,87 +18,113 @@ local TargetPets = {
     ["Burguro and Fryuro"] = true, ["La Casa Boo"] = true
 }
 
--- CHỐNG LAG: Chỉ tạo 1 vòng lặp chậm
-local IsHunting = false
+print("🔥 Nạp hệ thống Desync Control...")
 
--- HÀM BAY XUYÊN TƯỜNG (TWEEN)
-local function FlyTo(targetPart)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+-- ==========================================
+-- 1. TẠO TOOL "DESYNC" CHO BẠN TỰ ĐIỀU KHIỂN
+-- ==========================================
+local function CreateDesyncTool()
+    if LocalPlayer.Backpack:FindFirstChild("👻 Bóng Ma Desync") then return end
     
-    local root = char.HumanoidRootPart
-    
-    -- Tắt trọng lượng và xuyên tường
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false 
-            part.Massless = true
+    local tool = Instance.new("Tool")
+    tool.Name = "👻 Bóng Ma Desync"
+    tool.RequiresHandle = false
+    tool.Parent = LocalPlayer.Backpack
+
+    local isGhosting = false
+    local savedCFrame = nil
+    local clone = nil
+
+    tool.Activated:Connect(function()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        if not isGhosting then
+            -- BẬT DESYNC: Lưu vị trí, tạo bản sao đứng im
+            isGhosting = true
+            savedCFrame = root.CFrame
+            
+            char.Archivable = true
+            clone = char:Clone()
+            clone.Parent = game.Workspace
+            clone:SetPrimaryPartCFrame(savedCFrame)
+            
+            -- Làm mờ nhân vật thật
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.Transparency = 0.5 v.CanCollide = false end
+            end
+            print("👻 Đã xuất hồn! Tọa độ đã được chốt.")
+        else
+            -- TẮT DESYNC: Thu hồi xác
+            isGhosting = false
+            root.CFrame = savedCFrame -- Trở về vị trí Clone
+            if clone then clone:Destroy() end
+            
+            -- Hiện nguyên hình
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then 
+                    v.Transparency = 0 v.CanCollide = true 
+                end
+            end
+            print("👻 Đã hoàn hồn!")
         end
-    end
-    
-    -- Tính toán thời gian bay (càng xa bay càng lâu để không bị Server kick)
-    -- Tốc độ bay: 100 studs / giây (rất nhanh nhưng vẫn an toàn hơn Teleport)
-    local distance = (root.Position - targetPart.Position).Magnitude
-    local tweenTime = distance / 100 
-    
-    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetPart.CFrame})
-    
-    tween:Play()
-    tween.Completed:Wait() -- Đợi bay tới nơi
-    
-    -- Khôi phục va chạm
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = true end
-    end
+    end)
 end
 
--- HÀM TÌM VÀ SĂN
-local function Hunt()
-    if IsHunting then return end
-    IsHunting = true
-    
-    local foundPrompt = nil
-    local targetPart = nil
-    
-    -- TÌM KIẾM NHANH (KHÔNG LẶP GÂY LAG)
-    for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
-        local parent = prompt.Parent
-        if parent and TargetPets[parent.Name] then
-            foundPrompt = prompt
-            targetPart = parent
-            break -- Thấy 1 con là dừng quét ngay
-        end
-    end
-    
-    if targetPart and foundPrompt then
-        print("Đang bay tới: " .. targetPart.Name)
-        
-        -- Bay tới nơi
-        FlyTo(targetPart)
-        
-        -- Tới nơi là ép nhặt luôn
-        task.wait(0.2)
-        foundPrompt.HoldDuration = 0
-        if fireproximityprompt then
-            fireproximityprompt(foundPrompt)
-        end
-        foundPrompt:InputBegan()
-        task.wait(0.1)
-        foundPrompt:InputEnded()
-    else
-        print("Không có Pet xịn, đang đợi...")
-    end
-    
+-- Cấp tool mỗi khi nhân vật hồi sinh
+CreateDesyncTool()
+LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
-    IsHunting = false
+    CreateDesyncTool()
+end)
+
+-- ==========================================
+-- 2. TỰ ĐỘNG SĂN BẰNG CƠ CHẾ BLINK (NHÁY)
+-- ==========================================
+local isStealing = false
+
+local function BlinkSteal(prompt)
+    if isStealing then return end
+    isStealing = true
+    
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then isStealing = false return end
+    
+    -- Lưu vị trí an toàn trong Base của bạn
+    local safeCFrame = root.CFrame
+    
+    -- BLINK tới chỗ con Pet
+    root.CFrame = prompt.Parent.CFrame
+    task.wait(0.05) -- Đợi một chớp mắt để kịp chộp đồ
+    
+    -- FAST STEAL ÉP BUỘC
+    prompt.HoldDuration = 0
+    if fireproximityprompt then
+        fireproximityprompt(prompt, 1, true)
+    end
+    prompt:InputBegan()
+    task.wait(0.05)
+    prompt:InputEnded()
+    
+    -- BLINK ngược về chỗ an toàn ngay lập tức
+    root.CFrame = safeCFrame
+    
+    print("💎 Đã trộm thành công!")
+    task.wait(0.5) -- Đợi Pet ổn định trong túi mới bắt con khác
+    isStealing = false
 end
 
--- BẬT CHẾ ĐỘ SĂN TỰ ĐỘNG
-print("✅ V22 KHÔNG LAG ĐÃ CHẠY! Tự động quét sau mỗi 2 giây...")
+-- Quét tự động
 task.spawn(function()
     while true do
-        Hunt()
-        task.wait(2) -- Chỉ quét 2 giây 1 lần để chống Lag 100%
+        for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
+            local item = prompt.Parent
+            if item and TargetPets[item.Name] then
+                BlinkSteal(prompt)
+            end
+        end
+        task.wait(0.5)
     end
 end)
