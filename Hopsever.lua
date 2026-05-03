@@ -1,35 +1,29 @@
 --[[ 
-    SIMPLE REMOTE LOGGER (MÁY NGHE LÉN LỆNH)
-    - Theo dõi mọi tín hiệu gửi lên Server.
-    - Tìm lệnh liên quan đến việc đặt Pet (Place, Spawn, Drop...).
+    MANUAL REMOTE FINDER (QUÉT THỦ CÔNG)
+    - Tìm tất cả các lệnh liên quan đến việc đặt đồ.
 ]]
 
-local Log = function(remote, args)
-    print("📡 PHÁT HIỆN LỆNH: " .. remote:GetFullName())
-    if #args > 0 then
-        for i, v in pairs(args) do
-            print("   └─ Tham số [" .. i .. "]:", v)
+local function ScanRemotes()
+    print("🔍 ĐANG QUÉT TÌM LỆNH ĐẶT ĐỒ...")
+    local found = 0
+    
+    -- Quét trong ReplicatedStorage (Nơi chứa 99% các lệnh)
+    for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local name = v.Name:lower()
+            -- Lọc những cái tên khả nghi
+            if name:find("place") or name:find("spawn") or name:find("drop") or name:find("item") or name:find("pet") then
+                print("🎯 TÌM THẤY: " .. v:GetFullName())
+                found = found + 1
+            end
         end
+    end
+    
+    if found == 0 then
+        print("❌ Không tìm thấy lệnh nào khả nghi. Có thể tụi nó giấu tên rất kỹ.")
+    else
+        print("✅ Quét xong! Có " .. found .. " lệnh tiềm năng. Ông check trong F9 xem có cái nào tên giống 'Đặt đồ' không.")
     end
 end
 
-local mt = getrawmetatable(game)
-local old = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if method == "FireServer" or method == "InvokeServer" then
-        -- Chỉ in những lệnh liên quan đến đồ đạc để đỡ rối mắt
-        local name = self.Name:lower()
-        if name:find("place") or name:find("item") or name:find("pet") or name:find("base") then
-            Log(self, args)
-        end
-    end
-    return old(self, ...)
-end)
-
-setreadonly(mt, true)
-print("✅ Đang nghe lén... Giờ hãy cầm Pet và giữ E đặt vào Base đi!")
+ScanRemotes()
