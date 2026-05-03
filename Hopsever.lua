@@ -1,88 +1,120 @@
--- Kiểm tra nếu game đã tải xong
-if not game:IsLoaded() then game.Loaded:Wait() end
+-- Tạo Folder chứa GUI để tránh bị xóa khi Reset nhân vật
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local SpeedBtn = Instance.new("TextButton")
+local FastPickBtn = Instance.new("TextButton")
+local HopBtn = Instance.new("TextButton")
 
--- Khai báo thư viện Orion Lib (Rất ổn định và đẹp)
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- Cấu hình ScreenGui
+ScreenGui.Name = "BrainrotCustom"
+ScreenGui.Parent = game.CoreGui -- Đưa vào CoreGui để bảo mật hơn
+ScreenGui.ResetOnSpawn = false
 
--- Tạo Menu Chính
-local Window = OrionLib:MakeWindow({Name = "Brainrot Pro V2", HidePremium = false, SaveConfig = true, ConfigFolder = "BrainrotConfig"})
+-- Cấu hình Khung Menu (MainFrame)
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 250)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Bạn có thể kéo menu đi khắp màn hình
 
--- BIẾN ĐIỀU KHIỂN
-local SpeedValue = 30
-local FastPickEnabled = false
+-- Tiêu đề
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "BRAINROT PRO V3"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
 
--- TAB TÍNH NĂNG
-local MainTab = Window:MakeTab({
-	Name = "Tính Năng",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+-- Biến điều khiển
+local SpeedActive = false
+local FastPickActive = false
 
--- 1. TỐC ĐỘ (Speed 30)
-MainTab:AddSlider({
-	Name = "Tốc độ chạy",
-	Min = 16,
-	Max = 100,
-	Default = 30,
-	Color = Color3.fromRGB(255,255,255),
-	Increment = 1,
-	ValueName = "Speed",
-	Callback = function(Value)
-		SpeedValue = Value
-	end    
-})
+-- Nút Speed (Bật/Tắt Speed 30)
+SpeedBtn.Name = "SpeedBtn"
+SpeedBtn.Parent = MainFrame
+SpeedBtn.Position = UDim2.new(0.05, 0, 0.25, 0)
+SpeedBtn.Size = UDim2.new(0.9, 0, 0, 40)
+SpeedBtn.Text = "Speed: OFF"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 
--- Vòng lặp duy trì tốc độ (Giúp không bị giật lùi)
-game:GetService("RunService").Heartbeat:Connect(function()
-    pcall(function()
-        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = SpeedValue
-        end
-    end)
+SpeedBtn.MouseButton1Click:Connect(function()
+    SpeedActive = not SpeedActive
+    if SpeedActive then
+        SpeedBtn.Text = "Speed: ON (30)"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        SpeedBtn.Text = "Speed: OFF"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
 end)
 
--- 2. PICK E SIÊU NHANH
-MainTab:AddToggle({
-	Name = "Pick E Siêu Nhanh",
-	Default = false,
-	Callback = function(Value)
-		FastPickEnabled = Value
-        if Value then
-            spawn(function()
-                while FastPickEnabled do
-                    for _, v in pairs(game:GetDescendants()) do
-                        if v:IsA("ProximityPrompt") then
-                            v.HoldDuration = 0
-                        end
-                    end
-                    task.wait(0.5) -- Quét nhanh hơn
+-- Vòng lặp Speed
+game:GetService("RunService").RenderStepped:Connect(function()
+    if SpeedActive then
+        pcall(function()
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 30
+        end)
+    end
+end)
+
+-- Nút Fast Pick (Giữ E 0s)
+FastPickBtn.Name = "FastPickBtn"
+FastPickBtn.Parent = MainFrame
+FastPickBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
+FastPickBtn.Size = UDim2.new(0.9, 0, 0, 40)
+FastPickBtn.Text = "Fast Pick: OFF"
+FastPickBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+FastPickBtn.MouseButton1Click:Connect(function()
+    FastPickActive = not FastPickActive
+    if FastPickActive then
+        FastPickBtn.Text = "Fast Pick: ON"
+        FastPickBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        FastPickBtn.Text = "Fast Pick: OFF"
+        FastPickBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+-- Vòng lặp Fast Pick (Quét ProximityPrompt)
+spawn(function()
+    while true do
+        if FastPickActive then
+            for _, v in pairs(game:GetDescendants()) do
+                if v:IsA("ProximityPrompt") then
+                    v.HoldDuration = 0
                 end
-            end)
-        end
-	end    
-})
-
--- TAB HỆ THỐNG (Server Hop)
-local SettingsTab = Window:MakeTab({
-	Name = "Hệ Thống",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
-
-SettingsTab:AddButton({
-	Name = "Server Hop (Tìm phòng mới)",
-	Callback = function()
-        local HttpService = game:GetService("HttpService")
-        local TeleportService = game:GetService("TeleportService")
-        local PlaceId = game.PlaceId
-        local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-        for _, s in pairs(Servers.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
-                break
             end
         end
-  	end    
-})
+        task.wait(1)
+    end
+end)
 
-OrionLib:Init() -- Kích hoạt Menu
+-- Nút Server Hop
+HopBtn.Name = "HopBtn"
+HopBtn.Parent = MainFrame
+HopBtn.Position = UDim2.new(0.05, 0, 0.65, 0)
+HopBtn.Size = UDim2.new(0.9, 0, 0, 40)
+HopBtn.Text = "Server Hop"
+HopBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+
+HopBtn.MouseButton1Click:Connect(function()
+    local HttpService = game:GetService("HttpService")
+    local TeleportService = game:GetService("TeleportService")
+    local PlaceId = game.PlaceId
+    local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    for _, s in pairs(Servers.data) do
+        if s.playing < s.maxPlayers and s.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
+            break
+        end
+    end
+end)
+
+print("GUI của con ba đã sẵn sàng!")
