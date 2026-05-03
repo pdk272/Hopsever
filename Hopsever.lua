@@ -1,31 +1,35 @@
 --[[ 
-    CỖ MÁY KHOAN TÍN HIỆU (TÌM LỖ HỔNG DUPE)
-    Công dụng: Ép Máy Chủ nhận 1 lệnh hàng trăm lần trong tích tắc để xem nó có bị lỗi Logic không.
+    SIMPLE REMOTE LOGGER (MÁY NGHE LÉN LỆNH)
+    - Theo dõi mọi tín hiệu gửi lên Server.
+    - Tìm lệnh liên quan đến việc đặt Pet (Place, Spawn, Drop...).
 ]]
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-
--- Tùy chỉnh số lần spam (Đừng để quá 500 kẻo văng game)
-local SPAM_AMOUNT = 100 
-
-local function TestDupeGlitches()
-    print("⚠️ ĐANG KHOAN TÍN HIỆU VÀO MÁY CHỦ...")
-    
-    for i = 1, SPAM_AMOUNT do
-        task.spawn(function()
-            -- ==============================================================
-            -- BƯỚC QUAN TRỌNG: ÔNG PHẢI BẮT ĐƯỢC LỆNH BẰNG F9 RỒI DÁN VÀO ĐÂY
-            -- Ví dụ ông bắt được lệnh cất Pet vào kho:
-            -- ReplicatedStorage.Remotes.DepositPet:FireServer("ID_CUA_CON_PET")
-            
-            -- Dán lệnh của ông thay cho dòng bên dưới:
-            -- game:GetService("ReplicatedStorage").TenRemoteCuaGame:FireServer("ThamSo")
-            -- ==============================================================
-        end)
+local Log = function(remote, args)
+    print("📡 PHÁT HIỆN LỆNH: " .. remote:GetFullName())
+    if #args > 0 then
+        for i, v in pairs(args) do
+            print("   └─ Tham số [" .. i .. "]:", v)
+        end
     end
-    print("✅ Đã gửi " .. SPAM_AMOUNT .. " lệnh cùng lúc. Kiểm tra hòm đồ xem có lỗi rớt ra thêm con nào không!")
 end
 
--- Đợi ông sẵn sàng thì chạy
-TestDupeGlitches()
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "FireServer" or method == "InvokeServer" then
+        -- Chỉ in những lệnh liên quan đến đồ đạc để đỡ rối mắt
+        local name = self.Name:lower()
+        if name:find("place") or name:find("item") or name:find("pet") or name:find("base") then
+            Log(self, args)
+        end
+    end
+    return old(self, ...)
+end)
+
+setreadonly(mt, true)
+print("✅ Đang nghe lén... Giờ hãy cầm Pet và giữ E đặt vào Base đi!")
