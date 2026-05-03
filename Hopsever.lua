@@ -8,11 +8,11 @@ local player = Players.LocalPlayer
 
 --// GUI
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "ProMaxGUI"
+ScreenGui.Name = "ProMaxFull"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 270, 0, 230)
-Main.Position = UDim2.new(0.5, -135, 0.5, -115)
+Main.Size = UDim2.new(0, 270, 0, 300) -- tăng size để đủ nút
+Main.Position = UDim2.new(0.5, -135, 0.5, -150)
 Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
 Main.BorderSizePixel = 0
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
@@ -26,35 +26,41 @@ Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 16
 
--- BUTTON HOP
+-- HOP BUTTON
 local HopBtn = Instance.new("TextButton", Main)
 HopBtn.Size = UDim2.new(0.8,0,0,35)
-HopBtn.Position = UDim2.new(0.1,0,0.25,0)
+HopBtn.Position = UDim2.new(0.1,0,0.18,0)
 HopBtn.Text = "🚀 Hop Server"
 HopBtn.BackgroundColor3 = Color3.fromRGB(40,120,255)
 HopBtn.TextColor3 = Color3.new(1,1,1)
-HopBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", HopBtn)
 
--- BUTTON RESET
+-- RESET BUTTON
 local ResetBtn = Instance.new("TextButton", Main)
 ResetBtn.Size = UDim2.new(0.8,0,0,35)
-ResetBtn.Position = UDim2.new(0.1,0,0.45,0)
+ResetBtn.Position = UDim2.new(0.1,0,0.35,0)
 ResetBtn.Text = "💀 Fast Reset"
 ResetBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
 ResetBtn.TextColor3 = Color3.new(1,1,1)
-ResetBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", ResetBtn)
 
--- TOGGLE AUTO PICK
+-- AUTO PICK BUTTON
 local AutoBtn = Instance.new("TextButton", Main)
 AutoBtn.Size = UDim2.new(0.8,0,0,35)
-AutoBtn.Position = UDim2.new(0.1,0,0.65,0)
-AutoBtn.Text = "🟢 Auto Pick: OFF"
+AutoBtn.Position = UDim2.new(0.1,0,0.52,0)
+AutoBtn.Text = "🔴 Auto Pick: OFF"
 AutoBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
 AutoBtn.TextColor3 = Color3.new(1,1,1)
-AutoBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", AutoBtn)
+
+-- SPEED BUTTON
+local SpeedBtn = Instance.new("TextButton", Main)
+SpeedBtn.Size = UDim2.new(0.8,0,0,35)
+SpeedBtn.Position = UDim2.new(0.1,0,0.69,0)
+SpeedBtn.Text = "🔴 Speed 30: OFF"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+SpeedBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", SpeedBtn)
 
 --// DRAG
 local dragging, dragInput, dragStart, startPos
@@ -93,8 +99,7 @@ local function HopServer()
 	local JobID = game.JobId
 
 	local url = "https://games.roblox.com/v1/games/"..PlaceID.."/servers/Public?sortOrder=Asc&limit=100"
-	local response = game:HttpGet(url)
-	local data = HttpService:JSONDecode(response)
+	local data = HttpService:JSONDecode(game:HttpGet(url))
 
 	for _, v in pairs(data.data) do
 		if v.playing < v.maxPlayers and v.id ~= JobID then
@@ -112,27 +117,59 @@ local function FastReset()
 	end
 end
 
---// AUTO PICK E
+--// AUTO PICK (HOLD E FIX)
 local autoPick = false
-local pickSpeed = 1/30 -- ~30 lần/giây
 
 task.spawn(function()
 	while true do
-		if autoPick then
-			-- giả lập bấm E (tùy executor)
-			pcall(function()
-				keypress(0x45) -- E
-				task.wait()
-				keyrelease(0x45)
-			end)
+		if autoPick and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			
+			for _, v in pairs(workspace:GetDescendants()) do
+				if v:IsA("ProximityPrompt") then
+					
+					local part = v.Parent
+					if part and part:IsA("BasePart") then
+						
+						local distance = (part.Position - player.Character.HumanoidRootPart.Position).Magnitude
+						
+						if distance <= 15 then
+							pcall(function()
+								v.HoldDuration = 1
+								fireproximityprompt(v)
+							end)
+						end
+						
+					end
+				end
+			end
 		end
-		task.wait(pickSpeed)
+		
+		task.wait(0.1)
+	end
+end)
+
+--// SPEED SYSTEM
+local speedOn = false
+local normalSpeed = 16
+local boostSpeed = 30
+
+task.spawn(function()
+	while true do
+		if speedOn and player.Character and player.Character:FindFirstChild("Humanoid") then
+			local hum = player.Character.Humanoid
+			
+			if hum.WalkSpeed ~= boostSpeed then
+				hum.WalkSpeed = boostSpeed
+			end
+		end
+		
+		task.wait(0.2)
 	end
 end)
 
 --// EVENTS
 HopBtn.MouseButton1Click:Connect(function()
-	HopBtn.Text = "⏳ Đang tìm..."
+	HopBtn.Text = "⏳ Loading..."
 	HopServer()
 	task.wait(1)
 	HopBtn.Text = "🚀 Hop Server"
@@ -151,5 +188,23 @@ AutoBtn.MouseButton1Click:Connect(function()
 	else
 		AutoBtn.Text = "🔴 Auto Pick: OFF"
 		AutoBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+	end
+end)
+
+SpeedBtn.MouseButton1Click:Connect(function()
+	speedOn = not speedOn
+	
+	local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+	
+	if speedOn then
+		SpeedBtn.Text = "🟢 Speed 30: ON"
+		SpeedBtn.BackgroundColor3 = Color3.fromRGB(50,200,100)
+		
+		if hum then hum.WalkSpeed = boostSpeed end
+	else
+		SpeedBtn.Text = "🔴 Speed 30: OFF"
+		SpeedBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+		
+		if hum then hum.WalkSpeed = normalSpeed end
 	end
 end)
