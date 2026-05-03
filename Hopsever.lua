@@ -1,145 +1,121 @@
 --[[ 
-    BRAINROT V7 - XENO PC EDITION
-    - CFrame Speed (Bypass Anti-cheat PC)
-    - Smart Pick E (Chỉ vật phẩm ở gần, không lag)
-    - Slider giao diện mượt mà
+    BRAINROT V8 - FINAL POLISH (XENO PC)
+    - Fix Speed 30 chuẩn (không bị chết)
+    - Fix Pick E 0s (ép server nhận lệnh ngay)
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- Kiểm tra và xóa GUI cũ nếu có
-if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_Xeno") then
-    LocalPlayer.PlayerGui.Brainrot_Xeno:Destroy()
+-- Xóa GUI cũ
+if LocalPlayer.PlayerGui:FindFirstChild("Brainrot_V8") then
+    LocalPlayer.PlayerGui.Brainrot_V8:Destroy()
 end
 
--- TẠO GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Brainrot_Xeno"
+ScreenGui.Name = "Brainrot_V8"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 250, 0, 220)
-Main.Position = UDim2.new(0.5, -125, 0.4, -110)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
-Main.Active = true
+Main.Size = UDim2.new(0, 240, 0, 200)
+Main.Position = UDim2.new(0.5, -120, 0.4, -100)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Main.Draggable = true
+Main.Active = true
 Main.Parent = ScreenGui
-
--- Bo góc cho đẹp
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 10)
-Corner.Parent = Main
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Title.Text = "BRAINROT XENO V7"
-Title.TextColor3 = Color3.fromRGB(0, 200, 255)
-Title.Font = Enum.Font.GothamBold
+Title.Text = "BRAINROT V8 - CHUẨN 30"
+Title.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Parent = Main
 
--- --- PHẦN SPEED (THANH KÉO) ---
-local SpeedValue = 0 -- 0 là tắt, > 0 là tốc độ thêm vào
-local SpeedText = Instance.new("TextLabel")
-SpeedText.Size = UDim2.new(1, 0, 0, 20)
-SpeedText.Position = UDim2.new(0, 0, 0, 45)
-SpeedText.Text = "Tốc độ cộng thêm: 0"
-SpeedText.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedText.BackgroundTransparency = 1
-SpeedText.Parent = Main
+-- --- LOGIC SPEED 30 (Dịch chuyển bù trừ) ---
+local CurrentSpeed = 16
+local SpeedDisplay = Instance.new("TextLabel")
+SpeedDisplay.Size = UDim2.new(1, 0, 0, 30)
+SpeedDisplay.Position = UDim2.new(0, 0, 0, 40)
+SpeedDisplay.Text = "Tốc độ hiện tại: 16"
+SpeedDisplay.TextColor3 = Color3.fromRGB(255, 255, 0)
+SpeedDisplay.BackgroundTransparency = 1
+SpeedDisplay.Parent = Main
 
-local SliderFrame = Instance.new("TextButton")
-SliderFrame.Size = UDim2.new(0, 200, 0, 10)
-SliderFrame.Position = UDim2.new(0.5, -100, 0, 75)
-SliderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SliderFrame.Text = ""
-SliderFrame.Parent = Main
+-- Thanh kéo Speed
+local Slider = Instance.new("TextButton")
+Slider.Size = UDim2.new(0, 200, 0, 10)
+Slider.Position = UDim2.new(0.5, -100, 0, 75)
+Slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Slider.Text = ""
+Slider.Parent = Main
 
-local SliderFill = Instance.new("Frame")
-SliderFill.Size = UDim2.new(0, 0, 1, 0)
-SliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-SliderFill.Parent = SliderFrame
+local Fill = Instance.new("Frame")
+Fill.Size = UDim2.new(0.1, 0, 1, 0)
+Fill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+Fill.Parent = Slider
 
--- Logic Slider
-local isDragging = false
-SliderFrame.MouseButton1Down:Connect(function() isDragging = true end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then isDragging = false end end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local mousePos = UserInputService:GetMouseLocation().X
-        local framePos = SliderFrame.AbsolutePosition.X
-        local frameSize = SliderFrame.AbsoluteSize.X
-        local percent = math.clamp((mousePos - framePos) / frameSize, 0, 1)
-        
-        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        SpeedValue = percent * 2 -- Chỉnh độ nhạy Speed tại đây
-        SpeedText.Text = "Tốc độ cộng thêm: " .. math.floor(percent * 100)
-    end
+Slider.MouseButton1Down:Connect(function()
+    local connection
+    connection = game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            local percent = math.clamp((input.Position.X - Slider.AbsolutePosition.X) / Slider.AbsoluteSize.X, 0, 1)
+            Fill.Size = UDim2.new(percent, 0, 1, 0)
+            CurrentSpeed = math.floor(16 + (percent * 84)) -- Range từ 16 đến 100
+            SpeedDisplay.Text = "Tốc độ hiện tại: " .. CurrentSpeed
+        end
+    end)
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then connection:Disconnect() end
+    end)
 end)
 
--- Vòng lặp CFrame Speed (Bypass chống hack PC)
-RunService.RenderStepped:Connect(function()
-    if SpeedValue > 0 then
+-- Vòng lặp Speed mượt (Cân chỉnh để không bị Anti-cheat giết)
+RunService.Stepped:Connect(function()
+    pcall(function()
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChild("Humanoid")
         local root = char and char:FindFirstChild("HumanoidRootPart")
         
         if root and hum and hum.MoveDirection.Magnitude > 0 then
-            root.CFrame = root.CFrame + (hum.MoveDirection * SpeedValue)
+            -- Công thức tính toán: Chỉ bù trừ phần tốc độ dư ra so với 16
+            local extraSpeed = (CurrentSpeed - 16) / 50 
+            root.CFrame = root.CFrame + (hum.MoveDirection * extraSpeed)
         end
-    end
+    end)
 end)
 
--- --- PHẦN SMART PICK E (PHẠM VI GẦN) ---
+-- --- LOGIC PICK E SIÊU TỐC (0 GIÂY) ---
 local AutoPick = false
 local PickBtn = Instance.new("TextButton")
-PickBtn.Size = UDim2.new(0, 200, 0, 45)
+PickBtn.Size = UDim2.new(0, 200, 0, 50)
 PickBtn.Position = UDim2.new(0.5, -100, 0, 110)
-PickBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 PickBtn.Text = "Smart Pick E: TẮT"
+PickBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 PickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PickBtn.Font = Enum.Font.GothamBold
 PickBtn.Parent = Main
 
 PickBtn.MouseButton1Click:Connect(function()
     AutoPick = not AutoPick
     PickBtn.Text = AutoPick and "Smart Pick E: BẬT" or "Smart Pick E: TẮT"
-    PickBtn.BackgroundColor3 = AutoPick and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    PickBtn.BackgroundColor3 = AutoPick and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
 end)
 
--- Vòng lặp nhặt đồ (Tối ưu cho Xeno)
-task.spawn(function()
-    while task.wait(0.1) do
-        if AutoPick then
-            pcall(function()
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
-                        local part = prompt.Parent
-                        if part and part:IsA("BasePart") then
-                            local dist = (part.Position - root.Position).Magnitude
-                            if dist <= 25 then -- Chỉ nhặt trong bán kính 25m
-                                -- Lệnh đặc biệt dành cho các Executor như Xeno
-                                if fireproximityprompt then
-                                    fireproximityprompt(prompt, 1, true)
-                                else
-                                    prompt.HoldDuration = 0
-                                    prompt:InputBegan()
-                                end
-                            end
-                        end
-                    end
+-- Ép HoldDuration về 0 liên tục (Fix lỗi game hồi phục lại 2s)
+RunService.Heartbeat:Connect(function()
+    if AutoPick then
+        for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
+            local dist = (prompt.Parent:IsA("BasePart") and (prompt.Parent.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or 100
+            if dist < 20 then
+                prompt.HoldDuration = 0
+                -- Thử kích hoạt ngay nếu Xeno hỗ trợ lệnh fire
+                if fireproximityprompt then
+                    fireproximityprompt(prompt)
                 end
-            end)
+            end
         end
     end
 end)
 
-print("V7 đã sẵn sàng trên Xeno PC!")
+print("V8 đã tối ưu cho Xeno PC. Hãy thử kéo Speed lên mức 30!")
