@@ -1,9 +1,9 @@
 --[[ 
-    BRAINROT V18 - PHIÊN BẢN CHUẨN HÓA
-    - Speed 30: Chuẩn công thức ổn định.
-    - Fast Steal: Ép 0.1s (nhanh nhất có thể).
-    - Finder: Tìm 14 pet, thấy là dừng nhảy + báo động.
-    - GUI: Hiện chắc chắn trong PlayerGui, không mất khi chết.
+    BRAINROT V19 - TRẢM ĐỊNH (XENO PC AUTOEXEC)
+    - Tự chạy 100%, không cần bấm nút.
+    - Khóa chết hàm Server Hop khi thấy Pet (An toàn tuyệt đối).
+    - Phá giới hạn Speed khi cầm Pet.
+    - Fast Steal: Bấm E là lấy ngay lập tức.
 ]]
 
 local Players = game:GetService("Players")
@@ -11,9 +11,9 @@ local RunService = game:GetService("RunService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- DANH SÁCH 14 PET VIP
 local TargetPets = {
     ["La Secret Combinasion"] = true, ["Lavadorito Spinito"] = true, ["Garama and Madundung"] = true,
     ["Ketchuru and Musturu"] = true, ["Ketupat Kepat"] = true, ["Tang Tang Keletang"] = true,
@@ -22,74 +22,89 @@ local TargetPets = {
     ["Burguro and Fryuro"] = true, ["La Casa Boo"] = true
 }
 
--- KHỞI TẠO GUI (Vào PlayerGui để tránh lỗi CoreGui)
+-- BIẾN KHÓA AN TOÀN (Cực kỳ quan trọng)
+_G.PetFound = false
+
+-- KHỞI TẠO GUI (Vào PlayerGui)
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-if PlayerGui:FindFirstChild("Brainrot_V18") then PlayerGui.Brainrot_V18:Destroy() end
+if PlayerGui:FindFirstChild("Brainrot_V19") then PlayerGui.Brainrot_V19:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.Name = "Brainrot_V18"
+ScreenGui.Name = "Brainrot_V19"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 260, 0, 220)
-Main.Position = UDim2.new(0.5, -130, 0.4, -110)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
+Main.Size = UDim2.new(0, 260, 0, 120)
+Main.Position = UDim2.new(0.5, -130, 0, 20) -- Đưa lên mép trên cho gọn
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 2
+Main.BorderColor3 = Color3.fromRGB(255, 0, 0)
 Main.Active = true
 Main.Draggable = true
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "BRAINROT V18 - CHUẨN"
-Title.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-
 local Status = Instance.new("TextLabel", Main)
-Status.Size = UDim2.new(1, -20, 0, 50)
-Status.Position = UDim2.new(0, 10, 0, 40)
-Status.Text = "Trạng thái: Sẵn sàng"
-Status.TextColor3 = Color3.fromRGB(255, 255, 255)
+Status.Size = UDim2.new(1, 0, 1, 0)
+Status.Text = "Đang tải bản đồ..."
+Status.TextColor3 = Color3.fromRGB(0, 255, 255)
 Status.BackgroundTransparency = 1
+Status.Font = Enum.Font.GothamBold
+Status.TextSize = 15
 Status.TextWrapped = true
 
--- --- SPEED 30 (ỔN ĐỊNH) ---
-RunService.Heartbeat:Connect(function()
+-- --- 1. TỐC ĐỘ BẤT CHẤP (Không bị chậm khi cầm Pet) ---
+RunService.RenderStepped:Connect(function()
     pcall(function()
         local char = LocalPlayer.Character
         local root = char.HumanoidRootPart
         local hum = char.Humanoid
+        -- Chỉ đẩy tới khi bạn bấm phím di chuyển
         if hum.MoveDirection.Magnitude > 0 then
-            root.CFrame = root.CFrame + (hum.MoveDirection * (30 - 16) * 0.015)
+            -- Hệ số 0.25 bù vào tốc độ gốc, tương đương Speed ~35. Không quan tâm game ép đi chậm cỡ nào.
+            root.CFrame = root.CFrame + (hum.MoveDirection * 0.25)
         end
     end)
 end)
 
--- --- FAST STEAL (0.1 GIÂY) ---
-task.spawn(function()
-    while true do
+-- --- 2. FAST STEAL (Ép phím E từ bàn phím) ---
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+    if not isProcessed and input.KeyCode == Enum.KeyCode.E then
         pcall(function()
+            local root = LocalPlayer.Character.HumanoidRootPart
             for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
-                prompt.HoldDuration = 0.1
+                -- Nếu đứng cách vật phẩm dưới 25 studs, ép nhặt ngay
+                if prompt.Parent and (prompt.Parent.Position - root.Position).Magnitude < 25 then
+                    if fireproximityprompt then
+                        fireproximityprompt(prompt, 1, true)
+                    end
+                    -- Giả lập kịch bản dự phòng nếu fireproximityprompt bị trễ
+                    prompt:InputBegan()
+                    task.wait(0.05)
+                    prompt:InputEnded()
+                end
             end
         end)
-        task.wait(1)
     end
 end)
 
--- --- HÀM NHẢY SERVER ---
+-- --- 3. AUTO HOP & FINDER (Khóa chết khi có Pet) ---
 local function ServerHop()
-    Status.Text = "Đang tìm phòng trống..."
+    -- CHỐT AN TOÀN: Nếu đã thấy Pet, DỪNG NGAY LẬP TỨC toàn bộ lệnh nhảy
+    if _G.PetFound then return end 
+
+    Status.Text = "Phòng trống.\nĐang nhảy Server..."
+    Status.TextColor3 = Color3.fromRGB(150, 150, 150)
+    
     local PlaceId = game.PlaceId
     local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
     local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
     
     if success and result and result.data then
         for _, s in pairs(result.data) do
+            -- Vào server trống ít nhất 3 chỗ
             if s.playing < (s.maxPlayers - 3) and s.id ~= game.JobId then
                 TeleportService:TeleportToPlaceInstance(PlaceId, s.id)
                 task.wait(5)
-                ServerHop() -- Thử lại nếu kẹt
+                ServerHop() -- Gọi lại nếu bị kẹt
                 return
             end
         end
@@ -98,58 +113,48 @@ local function ServerHop()
     ServerHop()
 end
 
--- --- HÀM QUÉT PET ---
-local function StartScan()
-    local found = nil
+local function AutoScan()
+    local foundPet = nil
     for _, v in pairs(game.Workspace:GetDescendants()) do
         if TargetPets[v.Name] then
-            found = v
+            foundPet = v
             break 
         end
     end
     
-    if found then
-        Status.Text = "TÌM THẤY: " .. found.Name
-        Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-        local hl = Instance.new("Highlight", found)
-        hl.FillColor = Color3.fromRGB(255, 0, 0)
+    if foundPet then
+        -- KÍCH HOẠT CHỐT AN TOÀN
+        _G.PetFound = true 
         
-        -- Báo động
-        for i = 1, 3 do
+        Main.BorderColor3 = Color3.fromRGB(0, 255, 0)
+        Status.Text = "🔥🔥 THẤY PET VIP 🔥🔥\n" .. foundPet.Name .. "\nĐÃ KHÓA SERVER HOP!"
+        Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+        
+        local hl = Instance.new("Highlight", foundPet)
+        hl.FillColor = Color3.fromRGB(255, 0, 0)
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        
+        -- Hú chuông 5 lần
+        for i = 1, 5 do
             local s = Instance.new("Sound", game.Workspace)
             s.SoundId = "rbxassetid://138090596"
-            s.Volume = 2
+            s.Volume = 3
             s:Play()
             task.wait(0.5)
         end
     else
+        -- Không thấy mới cho nhảy
+        task.wait(1.5)
         ServerHop()
     end
 end
 
--- --- NÚT BẤM TRÊN GUI ---
-local StartBtn = Instance.new("TextButton", Main)
-StartBtn.Size = UDim2.new(0, 200, 0, 45)
-StartBtn.Position = UDim2.new(0.5, -100, 0, 100)
-StartBtn.Text = "BẮT ĐẦU SĂN & NHẢY SV"
-StartBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-StartBtn.Font = Enum.Font.GothamBold
-StartBtn.MouseButton1Click:Connect(StartScan)
-
-local CheckBtn = Instance.new("TextButton", Main)
-CheckBtn.Size = UDim2.new(0, 200, 0, 45)
-CheckBtn.Position = UDim2.new(0.5, -100, 0, 155)
-CheckBtn.Text = "CHỈ QUÉT TẠI CHỖ"
-CheckBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-CheckBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CheckBtn.Font = Enum.Font.GothamBold
-CheckBtn.MouseButton1Click:Connect(function()
-    local found = false
-    for _, v in pairs(game.Workspace:GetDescendants()) do
-        if TargetPets[v.Name] then found = true break end
-    end
-    Status.Text = found and "Có Pet VIP!" or "Phòng này không có gì."
+-- Tự động chạy ngay sau khi load map (Dành cho Autoexec)
+task.spawn(function()
+    if not game:IsLoaded() then game.Loaded:Wait() end
+    Status.Text = "Chuẩn bị quét sau 3 giây..."
+    task.wait(3) -- Chờ 3 giây để mọi vật phẩm rơi xuống map đầy đủ
+    AutoScan()
 end)
 
-print("Brainrot V18 đã tải xong.")
+print("V19 - Đã sẵn sàng chiến đấu!")
