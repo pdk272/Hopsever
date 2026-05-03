@@ -1,130 +1,69 @@
---[[ 
-    STEAL A BRAINROT: DESYNC PANEL
-    - Auto Blink Steal: Ngồi nhà, thấy Pet tự giật bóng ma ra lấy rồi về.
-    - Custom Tool: Cấp 1 Tool "Bóng Ma Desync" vào balo để bạn tự tạo Clone và đi dạo.
-]]
-
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local savedLocation = nil
 
--- Danh sách Brainrot VIP của bạn
-local TargetPets = {
-    ["La Secret Combinasion"] = true, ["Lavadorito Spinito"] = true, ["Garama and Madundung"] = true,
-    ["Ketchuru and Musturu"] = true, ["Ketupat Kepat"] = true, ["Tang Tang Keletang"] = true,
-    ["Tictac Sahur"] = true, ["Money Money Puggy"] = true, ["Cerberus"] = true,
-    ["Money Money Reindeer"] = true, ["Pretzo Robo"] = true, ["Popcuru and Fizzuru"] = true,
-    ["Burguro and Fryuro"] = true, ["La Casa Boo"] = true
-}
-
-print("🔥 Nạp hệ thống Desync Control...")
-
--- ==========================================
--- 1. TẠO TOOL "DESYNC" CHO BẠN TỰ ĐIỀU KHIỂN
--- ==========================================
-local function CreateDesyncTool()
-    if LocalPlayer.Backpack:FindFirstChild("👻 Bóng Ma Desync") then return end
-    
-    local tool = Instance.new("Tool")
-    tool.Name = "👻 Bóng Ma Desync"
-    tool.RequiresHandle = false
-    tool.Parent = LocalPlayer.Backpack
-
-    local isGhosting = false
-    local savedCFrame = nil
-    local clone = nil
-
-    tool.Activated:Connect(function()
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-
-        if not isGhosting then
-            -- BẬT DESYNC: Lưu vị trí, tạo bản sao đứng im
-            isGhosting = true
-            savedCFrame = root.CFrame
-            
-            char.Archivable = true
-            clone = char:Clone()
-            clone.Parent = game.Workspace
-            clone:SetPrimaryPartCFrame(savedCFrame)
-            
-            -- Làm mờ nhân vật thật
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.Transparency = 0.5 v.CanCollide = false end
-            end
-            print("👻 Đã xuất hồn! Tọa độ đã được chốt.")
-        else
-            -- TẮT DESYNC: Thu hồi xác
-            isGhosting = false
-            root.CFrame = savedCFrame -- Trở về vị trí Clone
-            if clone then clone:Destroy() end
-            
-            -- Hiện nguyên hình
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then 
-                    v.Transparency = 0 v.CanCollide = true 
-                end
-            end
-            print("👻 Đã hoàn hồn!")
-        end
-    end)
+-- TẠO GUI GỌN NHẸ NHẤT
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+if PlayerGui:FindFirstChild("ChiMotScriptTele") then 
+    PlayerGui.ChiMotScriptTele:Destroy() 
 end
 
--- Cấp tool mỗi khi nhân vật hồi sinh
-CreateDesyncTool()
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    CreateDesyncTool()
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "ChiMotScriptTele"
+ScreenGui.ResetOnSpawn = false
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 180, 0, 95)
+Main.Position = UDim2.new(0.5, -90, 0, 20)
+Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Main.Draggable = true
+Main.Active = true
+
+local SaveBtn = Instance.new("TextButton", Main)
+SaveBtn.Size = UDim2.new(1, -10, 0, 40)
+SaveBtn.Position = UDim2.new(0, 5, 0, 5)
+SaveBtn.Text = "1. LƯU BASE"
+SaveBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Font = Enum.Font.GothamBold
+
+local TeleBtn = Instance.new("TextButton", Main)
+TeleBtn.Size = UDim2.new(1, -10, 0, 40)
+TeleBtn.Position = UDim2.new(0, 5, 0, 50)
+TeleBtn.Text = "2. TELE VỀ"
+TeleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
+TeleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TeleBtn.Font = Enum.Font.GothamBold
+
+-- CHỨC NĂNG LƯU
+SaveBtn.MouseButton1Click:Connect(function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        savedLocation = char.HumanoidRootPart.CFrame
+        SaveBtn.Text = "ĐÃ LƯU!"
+        task.wait(1)
+        SaveBtn.Text = "1. LƯU BASE"
+    end
 end)
 
--- ==========================================
--- 2. TỰ ĐỘNG SĂN BẰNG CƠ CHẾ BLINK (NHÁY)
--- ==========================================
-local isStealing = false
-
-local function BlinkSteal(prompt)
-    if isStealing then return end
-    isStealing = true
-    
+-- CHỨC NĂNG TELE (CHỐNG GIẬT LẠI CHỖ CŨ)
+TeleBtn.MouseButton1Click:Connect(function()
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then isStealing = false return end
-    
-    -- Lưu vị trí an toàn trong Base của bạn
-    local safeCFrame = root.CFrame
-    
-    -- BLINK tới chỗ con Pet
-    root.CFrame = prompt.Parent.CFrame
-    task.wait(0.05) -- Đợi một chớp mắt để kịp chộp đồ
-    
-    -- FAST STEAL ÉP BUỘC
-    prompt.HoldDuration = 0
-    if fireproximityprompt then
-        fireproximityprompt(prompt, 1, true)
-    end
-    prompt:InputBegan()
-    task.wait(0.05)
-    prompt:InputEnded()
-    
-    -- BLINK ngược về chỗ an toàn ngay lập tức
-    root.CFrame = safeCFrame
-    
-    print("💎 Đã trộm thành công!")
-    task.wait(0.5) -- Đợi Pet ổn định trong túi mới bắt con khác
-    isStealing = false
-end
-
--- Quét tự động
-task.spawn(function()
-    while true do
-        for _, prompt in pairs(ProximityPromptService:GetProximityPrompts()) do
-            local item = prompt.Parent
-            if item and TargetPets[item.Name] then
-                BlinkSteal(prompt)
-            end
-        end
-        task.wait(0.5)
+    if char and char:FindFirstChild("HumanoidRootPart") and savedLocation then
+        local root = char.HumanoidRootPart
+        
+        -- Bước 1: Triệt tiêu mọi lực vật lý đang tác động
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        
+        -- Bước 2: Đóng băng nhân vật
+        root.Anchored = true 
+        
+        -- Bước 3: Di chuyển cả cụm nhân vật (an toàn hơn CFrame thường)
+        char:PivotTo(savedLocation)
+        
+        -- Bước 4: Đợi một nhịp cực nhỏ để ép Server chốt vị trí mới, sau đó mở băng
+        task.wait(0.1)
+        root.Anchored = false
     end
 end)
