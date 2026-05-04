@@ -1,8 +1,8 @@
 --[[ 
-    VANGUARD TITAN V5.5 - SEQUENTIAL & ANTI-CHEAT FIX
-    - Speed: Smooth Delta Bypass (Né Anti-cheat gắt hơn).
-    - Combo: Giữ E 0.3s, dùng từng món một (Bee -> Boogie -> Medusa -> Megaphone).
-    - UI: Chữ siêu to, thanh kéo hiện số rõ ràng.
+    VANGUARD TITAN V5.7 - STEAL & COMBO UNIFIED
+    - Action: Nhấn E là vừa Steal Pet vừa nổ Combo ngay lập tức.
+    - Speed: Stealth Mode (Giới hạn an toàn, cực mượt né Anti-cheat).
+    - Gears: Bee -> Boogie -> Medusa -> Megaphone.
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -14,13 +14,12 @@ local Config = {
     SpeedValue = 16,
     Enabled = false,
     Accent = Color3.fromRGB(170, 0, 255),
-    HoldTime = 0.3, -- Đã chỉnh xuống 0.3s
     ComboKeywords = {"Bee", "Boogie", "Medusa", "Megaphone"}
 }
 
--- 1. GUI
+-- 1. GUI (CHỮ TO, NÚT RÕ)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV55"
+ScreenGui.Name = "TitanV57"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
@@ -33,14 +32,14 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "TITAN V5.5 - SMOOTH"
+Title.Text = "TITAN V5.7 - STEAL COMBO"
 Title.TextSize = 22
 Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Title)
 
--- 2. SPEED SYSTEM (SMOOTH ANTI-CHEAT BYPASS)
+-- 2. SPEED SYSTEM (FIXED ANTI-CHEAT)
 local SpeedToggle = Instance.new("TextButton", Main)
 SpeedToggle.Size = UDim2.new(0.9, 0, 0, 60)
 SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
@@ -84,35 +83,28 @@ UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         Knob.Position = UDim2.new(pos, -14, 0.5, -14)
-        Config.SpeedValue = 16 + (pos * 104)
+        Config.SpeedValue = 16 + (pos * 54) -- Giới hạn 70 cực kỳ an toàn
         SpeedLabel.Text = "TỐC ĐỘ: " .. math.floor(Config.SpeedValue)
     end
 end)
 
--- Cơ chế Speed mượt để né Anti-cheat
 RunService.Heartbeat:Connect(function(dt)
     if Config.Enabled and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LPlr.Character.HumanoidRootPart
         local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
         if hum.MoveDirection.Magnitude > 0 then
-            -- Giới hạn khoảng cách dịch chuyển tối đa mỗi khung hình để né BAC-6637
-            local moveAmt = hum.MoveDirection * (Config.SpeedValue * dt * 0.92)
-            hrp.CFrame = hrp.CFrame + moveAmt
+            -- Bypass mượt 0.85
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.SpeedValue * dt * 0.85))
         end
     end
 end)
 
--- 3. SEQUENTIAL COMBO (DÙNG TỪNG MÓN NHANH)
-local isHolding = false
-local holdStartTime = 0
-
-local function SequentialFire()
+-- 3. INSTANT STEAL & COMBO (NÃ NGAY KHI BẤM E)
+local function ExecuteCombo()
     local bp = LPlr:FindFirstChild("Backpack")
     local char = LPlr.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
-
-    print("⚔️ ĐANG TUNG COMBO THEO THỨ TỰ...")
 
     for _, keyword in pairs(Config.ComboKeywords) do
         local tool = nil
@@ -126,45 +118,28 @@ local function SequentialFire()
         end
 
         if tool then
-            -- Cầm lên
             hum:EquipTool(tool)
-            task.wait(0.08) -- Delay ngắn để server nhận gear
-            
-            -- Kích hoạt
+            task.wait(0.07) -- Delay siêu ngắn để xả nhanh
             tool:Activate()
             local rem = tool:FindFirstChildOfClass("RemoteEvent") or tool:FindFirstChild("Remote")
             if rem then rem:FireServer() end
-            
-            task.wait(0.08) -- Đợi skill bay ra
-            hum:UnequipTools() -- Cất đi để món tiếp theo lên tay
-            task.wait(0.02)
+            task.wait(0.05)
+            hum:UnequipTools()
         end
     end
 end
 
-UIS.InputBegan:Connect(function(input, processed)
-    if processed then return end
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    -- "gameProcessed" thường là khi bạn đang gõ chat, chúng ta bỏ qua chat.
+    -- Nhưng khi bấm E vào Pet, gameProcessed sẽ là True. 
+    -- Để can thiệp vào Steal Pet, chúng ta sẽ chạy lệnh Combo ngay cả khi gameProcessed là True.
+
     if input.KeyCode == Enum.KeyCode.E then
-        isHolding = true
-        holdStartTime = tick()
-        task.spawn(function()
-            while isHolding do
-                if tick() - holdStartTime >= Config.HoldTime then
-                    SequentialFire()
-                    isHolding = false
-                    break
-                end
-                task.wait()
-            end
-        end)
+        task.spawn(ExecuteCombo) -- Chạy song song với hành động Steal của game
     end
 end)
 
-UIS.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.E then isHolding = false end
-end)
-
--- 4. SERVER HOP
+-- 4. SERVER HOP & ĐÓNG
 local function QuickBtn(text, pos, callback)
     local b = Instance.new("TextButton", Main)
     b.Size = UDim2.new(0.9, 0, 0, 45)
@@ -186,4 +161,4 @@ end)
 
 QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 
-print("💎 VANGUARD TITAN V5.5 LOADED. 0.3s Hold E Ready.")
+print("🔥 TITAN V5.7 LOADED. Instant Steal + Combo Active.")
