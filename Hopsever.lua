@@ -1,8 +1,9 @@
---[[ 
-    VANGUARD TITAN V5.7 - STEAL & COMBO UNIFIED
-    - Action: Nhấn E là vừa Steal Pet vừa nổ Combo ngay lập tức.
-    - Speed: Stealth Mode (Giới hạn an toàn, cực mượt né Anti-cheat).
-    - Gears: Bee -> Boogie -> Medusa -> Megaphone.
+--[[
+    VANGUARD TITAN: POSITION CHRONICLE (V16.0)
+    - Feature: Dual-Position Memory (Lưu & Teleport)
+    - Interaction: Instant E Trigger (Ép tương tác 0s)
+    - Keybind: K (Open/Close Menu)
+    - Theme: Deep Space Nebula
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -10,155 +11,142 @@ local LPlr = Services.Players.LocalPlayer
 local RunService = Services.RunService
 local UIS = Services.UserInputService
 
-local Config = {
-    SpeedValue = 16,
-    Enabled = false,
-    Accent = Color3.fromRGB(170, 0, 255),
-    ComboKeywords = {"Bee", "Boogie", "Medusa", "Megaphone"}
+local Titan = {
+    Pos1 = nil,
+    Pos2 = nil,
+    FastE = true,
+    Visible = true,
+    Accent = Color3.fromRGB(0, 255, 255)
 }
 
--- 1. GUI (CHỮ TO, NÚT RÕ)
+-- 1. GUI CONSTRUCTION (CELESTIAL DESIGN)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV57"
+ScreenGui.Name = "TitanChronicle"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 320, 0, 380)
-Main.Position = UDim2.new(0.5, -160, 0.3, 0)
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.Size = UDim2.new(0, 350, 0, 380)
+Main.Position = UDim2.new(0.5, -175, 0.4, -190)
+Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+Main.BorderSizePixel = 0
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
-Main.Active = true
-Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "TITAN V5.7 - STEAL COMBO"
-Title.TextSize = 22
-Title.TextColor3 = Config.Accent
+Title.Size = UDim2.new(1, 0, 0, 60)
+Title.Text = "TITAN • CHRONICLE"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 24
 Title.Font = Enum.Font.GothamBold
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", Title)
+Title.BackgroundTransparency = 1
 
--- 2. SPEED SYSTEM (FIXED ANTI-CHEAT)
-local SpeedToggle = Instance.new("TextButton", Main)
-SpeedToggle.Size = UDim2.new(0.9, 0, 0, 60)
-SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
-SpeedToggle.Text = "STEALTH SPEED: OFF"
-SpeedToggle.TextSize = 20
-SpeedToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-SpeedToggle.TextColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", SpeedToggle)
+local Container = Instance.new("ScrollingFrame", Main)
+Container.Size = UDim2.new(0.9, 0, 0.8, 0)
+Container.Position = UDim2.new(0.05, 0, 0.18, 0)
+Container.BackgroundTransparency = 1
+Container.CanvasSize = UDim2.new(0, 0, 1.2, 0)
+Container.ScrollBarThickness = 0
+Instance.new("UIListLayout", Container).Padding = UDim.new(0, 10)
 
-local SpeedLabel = Instance.new("TextLabel", Main)
-SpeedLabel.Size = UDim2.new(1, 0, 0, 30)
-SpeedLabel.Position = UDim2.new(0, 0, 0, 130)
-SpeedLabel.Text = "TỐC ĐỘ: 16"
-SpeedLabel.TextSize = 22
-SpeedLabel.TextColor3 = Config.Accent
-SpeedLabel.BackgroundTransparency = 1
+-- 2. UI UTILS
+local function CreateButton(text, color, callback)
+    local Btn = Instance.new("TextButton", Container)
+    Btn.Size = UDim2.new(1, 0, 0, 45)
+    Btn.BackgroundColor3 = color
+    Btn.Text = text
+    Btn.TextColor3 = Color3.new(1, 1, 1)
+    Btn.Font = Enum.Font.GothamSemibold
+    Btn.TextSize = 14
+    Instance.new("UICorner", Btn)
+    Btn.MouseButton1Click:Connect(callback)
+    return Btn
+end
 
-local Bar = Instance.new("Frame", Main)
-Bar.Size = UDim2.new(0.8, 0, 0, 12)
-Bar.Position = UDim2.new(0.1, 0, 0, 170)
-Bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Instance.new("UICorner", Bar)
-
-local Knob = Instance.new("TextButton", Bar)
-Knob.Size = UDim2.new(0, 28, 0, 28)
-Knob.Position = UDim2.new(0, -14, 0.5, -14)
-Knob.Text = ""
-Knob.BackgroundColor3 = Config.Accent
-Instance.new("UICorner", Knob)
-
-SpeedToggle.MouseButton1Click:Connect(function()
-    Config.Enabled = not Config.Enabled
-    SpeedToggle.Text = Config.Enabled and "STEALTH SPEED: ON" or "STEALTH SPEED: OFF"
-    SpeedToggle.TextColor3 = Config.Enabled and Config.Accent or Color3.new(1, 1, 1)
-end)
-
-local dragging = false
-Knob.MouseButton1Down:Connect(function() dragging = true end)
-UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-UIS.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-        Knob.Position = UDim2.new(pos, -14, 0.5, -14)
-        Config.SpeedValue = 16 + (pos * 54) -- Giới hạn 70 cực kỳ an toàn
-        SpeedLabel.Text = "TỐC ĐỘ: " .. math.floor(Config.SpeedValue)
+-- 3. CHỨC NĂNG LƯU & TELEPORT
+CreateButton("📍 LƯU VỊ TRÍ 1 (BASE)", Color3.fromRGB(30, 30, 50), function()
+    local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        Titan.Pos1 = hrp.CFrame
+        print("🌌 Đã lưu vị trí 1")
     end
 end)
 
-RunService.Heartbeat:Connect(function(dt)
-    if Config.Enabled and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LPlr.Character.HumanoidRootPart
-        local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
-        if hum.MoveDirection.Magnitude > 0 then
-            -- Bypass mượt 0.85
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.SpeedValue * dt * 0.85))
-        end
+CreateButton("🚀 BAY ĐẾN VỊ TRÍ 1", Color3.fromRGB(0, 100, 200), function()
+    local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and Titan.Pos1 then
+        hrp.CFrame = Titan.Pos1
     end
 end)
 
--- 3. INSTANT STEAL & COMBO (NÃ NGAY KHI BẤM E)
-local function ExecuteCombo()
-    local bp = LPlr:FindFirstChild("Backpack")
-    local char = LPlr.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+Instance.new("Frame", Container).Size = UDim2.new(1, 0, 0, 2).BackgroundColor3 = Color3.new(1,1,1)
 
-    for _, keyword in pairs(Config.ComboKeywords) do
-        local tool = nil
-        for _, v in pairs(bp:GetChildren()) do
-            if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then tool = v break end
-        end
-        if not tool then
-            for _, v in pairs(char:GetChildren()) do
-                if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then tool = v break end
+CreateButton("📍 LƯU VỊ TRÍ 2 (PET)", Color3.fromRGB(30, 30, 50), function()
+    local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        Titan.Pos2 = hrp.CFrame
+        print("🌌 Đã lưu vị trí 2")
+    end
+end)
+
+CreateButton("🚀 BAY ĐẾN VỊ TRÍ 2", Color3.fromRGB(0, 150, 100), function()
+    local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and Titan.Pos2 then
+        hrp.CFrame = Titan.Pos2
+    end
+end)
+
+local EToggle = CreateButton("⚡ AUTO FAST E: ON", Color3.fromRGB(40, 40, 60), function() end)
+EToggle.MouseButton1Click:Connect(function()
+    Titan.FastE = not Titan.FastE
+    EToggle.Text = "⚡ AUTO FAST E: " .. (Titan.FastE and "ON" or "OFF")
+    EToggle.TextColor3 = Titan.FastE and Titan.Accent or Color3.new(0.5, 0.5, 0.5)
+end)
+
+-- 4. CORE ENGINE (FAST INTERACT & TOGGLE)
+
+-- Ép E nhanh nhất có thể
+RunService.Stepped:Connect(function()
+    if Titan.FastE then
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("ProximityPrompt") then
+                v.HoldDuration = 0 -- Không cần đợi
+                v.MaxActivationDistance = 20 -- Tăng tầm với
+                -- Ép kích hoạt nếu ở gần
+                if LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (LPlr.Character.HumanoidRootPart.Position - v.Parent:GetPivot().Position).Magnitude
+                    if dist <= v.MaxActivationDistance then
+                        fireproximityprompt(v) -- Lệnh ép nổ E của các Executor xịn
+                    end
+                end
             end
         end
-
-        if tool then
-            hum:EquipTool(tool)
-            task.wait(0.07) -- Delay siêu ngắn để xả nhanh
-            tool:Activate()
-            local rem = tool:FindFirstChildOfClass("RemoteEvent") or tool:FindFirstChild("Remote")
-            if rem then rem:FireServer() end
-            task.wait(0.05)
-            hum:UnequipTools()
-        end
-    end
-end
-
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    -- "gameProcessed" thường là khi bạn đang gõ chat, chúng ta bỏ qua chat.
-    -- Nhưng khi bấm E vào Pet, gameProcessed sẽ là True. 
-    -- Để can thiệp vào Steal Pet, chúng ta sẽ chạy lệnh Combo ngay cả khi gameProcessed là True.
-
-    if input.KeyCode == Enum.KeyCode.E then
-        task.spawn(ExecuteCombo) -- Chạy song song với hành động Steal của game
     end
 end)
 
--- 4. SERVER HOP & ĐÓNG
-local function QuickBtn(text, pos, callback)
-    local b = Instance.new("TextButton", Main)
-    b.Size = UDim2.new(0.9, 0, 0, 45)
-    b.Position = pos
-    b.Text = text
-    b.TextSize = 18
-    b.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    b.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", b)
-    b.MouseButton1Click:Connect(callback)
-    return b
-end
-
-QuickBtn("SERVER HOP", UDim2.new(0.05, 0, 0, 220), function()
-    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
-    local data = Services.HttpService:JSONDecode(game:HttpGet(url)).data
-    Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, data[math.random(1, #data)].id)
+-- Đóng mở Menu phím K
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.K then
+        Titan.Visible = not Titan.Visible
+        Main.Visible = Titan.Visible
+    end
 end)
 
-QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+-- Draggable
+local dragStart, startPos
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragStart = input.Position
+        startPos = Main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragStart = nil end
+        end)
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragStart then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
-print("🔥 TITAN V5.7 LOADED. Instant Steal + Combo Active.")
+print("🌌 TITAN CHRONICLE V16.0 LOADED. Phím K để đóng/mở.")
