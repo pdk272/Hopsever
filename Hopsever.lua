@@ -1,8 +1,8 @@
 --[[ 
-    VANGUARD TITAN V5.2 - INSTANT REMOTE COMBO
-    - Method: FireServer (Kích hoạt cùng lúc không đợi Equip)
-    - Gears: Bee Launcher, Boogie Bomb, Medusa's Head, Megaphone.
-    - Speed: Stealth CFrame Bypass.
+    VANGUARD TITAN V5.3 - FAST COMBO
+    - Trigger: Giữ E 0.4 giây (Siêu nhanh).
+    - Gears: Bee, Boogie, Medusa, Megaphone.
+    - Speed: Stealth CFrame (Né BAC-6637).
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -14,13 +14,13 @@ local Config = {
     SpeedValue = 16,
     Enabled = false,
     Accent = Color3.fromRGB(170, 0, 255),
-    HoldTime = 1,
-    ComboKeywords = {"Bee", "Bee", "Boogie", "Medusa", "Megaphone"}
+    HoldTime = 0.4, -- Đã chỉnh xuống 0.4s theo ý ông
+    ComboKeywords = {"Bee", "Boogie", "Medusa", "Megaphone"}
 }
 
--- 1. GUI (GIỮ NGUYÊN PHONG CÁCH TO RÕ)
+-- 1. GUI
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV52"
+ScreenGui.Name = "TitanV53"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
@@ -33,14 +33,14 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "TITAN V5.2 - INSTANT E"
+Title.Text = "TITAN V5.3 - FAST E"
 Title.TextSize = 22
 Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Title)
 
--- 2. SPEED SYSTEM (STEALTH BYPASS)
+-- 2. SPEED SYSTEM
 local SpeedToggle = Instance.new("TextButton", Main)
 SpeedToggle.Size = UDim2.new(0.9, 0, 0, 60)
 SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
@@ -99,19 +99,17 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- 3. INSTANT COMBO LOGIC (NÃ ĐỒNG LOẠT)
+-- 3. SIÊU TỐC COMBO (0.4S)
 local isHolding = false
 local holdStartTime = 0
 
-local function InstantFire()
+local function FastFire()
     local bp = LPlr:FindFirstChild("Backpack")
     local char = LPlr.Character
-    if not char then return end
-
-    print("⚡ ĐANG NÃ COMBO ĐỒNG LOẠT...")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hum then return end
 
     for _, keyword in pairs(Config.ComboKeywords) do
-        -- Tìm Tool
         local tool = nil
         for _, v in pairs(bp:GetChildren()) do
             if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then
@@ -126,19 +124,21 @@ local function InstantFire()
             end
         end
 
-        -- Kích hoạt bằng cách gửi Remote (Nhanh nhất)
         if tool then
             task.spawn(function()
-                -- Tìm Remote Event bên trong Gear để kích hoạt không cần cầm
+                -- Ép cầm gear siêu nhanh
+                hum:EquipTool(tool)
+                -- Nã Remote đồng thời bấm Activate
                 local remote = tool:FindFirstChildOfClass("RemoteEvent") or tool:FindFirstChild("Remote")
-                if remote then
-                    remote:FireServer()
-                end
-                -- Vẫn gọi Activate phòng trường hợp không có Remote
+                if remote then remote:FireServer() end
                 tool:Activate()
+                task.wait(0.1)
+                tool:Activate() -- Bấm bồi phát nữa
             end)
         end
     end
+    task.wait(0.3)
+    hum:UnequipTools()
 end
 
 UIS.InputBegan:Connect(function(input, processed)
@@ -149,11 +149,11 @@ UIS.InputBegan:Connect(function(input, processed)
         task.spawn(function()
             while isHolding do
                 if tick() - holdStartTime >= Config.HoldTime then
-                    InstantFire()
+                    FastFire()
                     isHolding = false
                     break
                 end
-                task.wait(0.05)
+                task.wait() -- Check liên tục từng frame
             end
         end)
     end
@@ -165,7 +165,7 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- 4. SERVER HOP
+-- 4. SERVER HOP & ĐÓNG
 local function QuickBtn(text, pos, callback)
     local b = Instance.new("TextButton", Main)
     b.Size = UDim2.new(0.9, 0, 0, 45)
@@ -187,4 +187,4 @@ end)
 
 QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 
-print("🚀 VANGUARD TITAN V5.2 LOADED. Instant Combo Active.")
+print("⚡ TITAN V5.3 LOADED. Trigger 0.4s Ready.")
