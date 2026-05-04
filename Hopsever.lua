@@ -1,8 +1,8 @@
 --[[ 
-    VANGUARD TITAN V4.1 - THE FINAL BYPASS
-    - Speed Bypass: Dùng CFrame Delta (Chắc chắn hoạt động 100%)
-    - UI: Chữ siêu to, Slider hiện số rõ ràng
-    - Ghost: Quantum + Change (Delay chuẩn né Reset)
+    VANGUARD TITAN V4.2 - BYPASS BRAINROT
+    - Speed: Dùng Velocity (Vận tốc vật lý) để né bị Dead/Kick.
+    - Ghost: Quantum + Change (Tối ưu delay né Reset).
+    - UI: Chữ siêu to, thanh kéo hiện số rõ ràng.
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -14,9 +14,9 @@ local Config = {
     Accent = Color3.fromRGB(170, 0, 255)
 }
 
--- 1. GUI THIẾT KẾ TO RÕ (DỄ NHÌN)
+-- 1. GUI (CHỮ TO, DỄ NHÌN)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV41"
+ScreenGui.Name = "TitanV42"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
@@ -27,7 +27,7 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
 Main.Active = true
 Main.Draggable = true
 
--- Hiệu ứng Bong bóng bay trên Menu (Visuals)
+-- Hiệu ứng Bong bóng (Visuals)
 task.spawn(function()
     while Main do
         local b = Instance.new("Frame", Main)
@@ -51,14 +51,14 @@ end)
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "VANGUARD TITAN V4.1"
+Title.Text = "VANGUARD TITAN V4.2"
 Title.TextSize = 22
 Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Title)
 
--- 2. THANH KÉO SPEED (SỬA LỖI KHÔNG CHẠY)
+-- 2. SPEED SYSTEM (BYPASS DEAD)
 local SpeedToggle = Instance.new("TextButton", Main)
 SpeedToggle.Size = UDim2.new(0.9, 0, 0, 50)
 SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
@@ -89,7 +89,7 @@ Knob.Text = ""
 Knob.BackgroundColor3 = Color3.new(1, 1, 1)
 Instance.new("UICorner", Knob)
 
--- LOGIC SPEED CFRAME (BYPASS CHẮC CHẮN)
+-- LOGIC SPEED VELOCITY (ANTI-DEAD)
 SpeedToggle.MouseButton1Click:Connect(function()
     Config.Enabled = not Config.Enabled
     SpeedToggle.Text = Config.Enabled and "SPEED: ON" or "SPEED: OFF"
@@ -103,24 +103,25 @@ Services.UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         Knob.Position = UDim2.new(pos, -14, 0.5, -14)
-        Config.SpeedValue = 16 + (pos * 134)
+        Config.SpeedValue = 16 + (pos * 134) -- Lên tới 150
         SpeedLabel.Text = "TỐC ĐỘ: " .. math.floor(Config.SpeedValue)
     end
 end)
 
--- VÒNG LẶP DI CHUYỂN (ÉP TỌA ĐỘ)
-RunService.Stepped:Connect(function(_, dt)
+-- ÉP VẬN TỐC (Để server ko check ra hack tọa độ)
+RunService.PostSimulation:Connect(function()
     if Config.Enabled and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LPlr.Character.HumanoidRootPart
         local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
+        
         if hum.MoveDirection.Magnitude > 0 then
-            -- Bypass WalkSpeed bằng cách dịch chuyển CFrame theo hướng di chuyển
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.SpeedValue * dt))
+            -- Chỉ ép vận tốc theo chiều ngang (X, Z), giữ nguyên chiều dọc (Y) để ko bị bay lên trời
+            hrp.AssemblyLinearVelocity = Vector3.new(hum.MoveDirection.X * Config.SpeedValue, hrp.AssemblyLinearVelocity.Y, hum.MoveDirection.Z * Config.SpeedValue)
         end
     end
 end)
 
--- 3. GHOST COMBO (NÉ RESET TUYỆT ĐỐI)
+-- 3. GHOST COMBO (FIX RESET/DEAD)
 local GhostBtn = Instance.new("TextButton", Main)
 GhostBtn.Size = UDim2.new(0.9, 0, 0, 60)
 GhostBtn.Position = UDim2.new(0.05, 0, 0, 200)
@@ -139,7 +140,7 @@ local function UseGear(namePart)
     
     if tool and char:FindFirstChildOfClass("Humanoid") then
         char:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
-        task.wait(0.2) -- Tăng delay nhận diện gear
+        task.wait(0.2)
         tool:Activate()
         return true
     end
@@ -148,7 +149,7 @@ end
 
 GhostBtn.MouseButton1Click:Connect(function()
     if UseGear("Quantum") then
-        task.wait(0.6) -- Delay an toàn để bóng xuất hiện
+        task.wait(0.7) -- Tăng delay cho server load bóng
         UseGear("Change")
         task.wait(0.3)
         if LPlr.Character and LPlr.Character:FindFirstChildOfClass("Humanoid") then
@@ -157,7 +158,7 @@ GhostBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 4. SERVER HOP (FAST) & ĐÓNG
+-- 4. SERVER HOP & ĐÓNG
 local function QuickBtn(text, pos, callback)
     local b = Instance.new("TextButton", Main)
     b.Size = UDim2.new(0.9, 0, 0, 45)
@@ -179,4 +180,4 @@ end)
 
 QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 360), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 
-print("🚀 VANGUARD TITAN V4.1 LOADED. Chắc chắn Speed sẽ chạy!")
+print("🚀 VANGUARD TITAN V4.2 BYPASS LOADED. Speed & Ghost Optimized.")
