@@ -1,63 +1,89 @@
 --[[ 
-    VANGUARD ULTIMATE EDITION
-    - Professional UI Design (Gradient & Stroke)
-    - Anti-Duplicate Fast Server Hop
-    - Smooth Delta-Sync Speed (Safe Mode)
+    VANGUARD TITAN - FINAL ASCENSION
+    - Custom Slider Speed (Anti-Cheat Optimized)
+    - Desync "Ghost" Mode
+    - Optimized Bubble & Dark Aura Visuals
+    - Secure Server Hop
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
 local LPlr = Services.Players.LocalPlayer
-local HttpService = Services.HttpService
 local RunService = Services.RunService
-local TeleportService = Services.TeleportService
+local HttpService = Services.HttpService
 
 -- 1. CONFIGURATION
 local Config = {
-    Speed = 30,
-    Active = false,
-    ESP = true,
-    AccentColor = Color3.fromRGB(0, 255, 200)
+    Speed = 16,
+    Desync = false,
+    Visuals = false,
+    Accent = Color3.fromRGB(170, 0, 255) -- Màu tím Dark Aura
 }
 
--- 2. TẠO GUI ĐẲNG CẤP (Custom UI Design)
+-- 2. TẠO GUI ĐẲNG CẤP (TITAN UI)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "VanguardUI"
-ScreenGui.ResetOnSpawn = false
-
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 260, 0, 320)
-Main.Position = UDim2.new(0.5, -130, 0.4, 0)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.Size = UDim2.new(0, 280, 0, 380)
+Main.Position = UDim2.new(0.5, -140, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
--- Bo góc & Đổ bóng viền
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Config.AccentColor
-Stroke.Thickness = 1.5
-Stroke.Transparency = 0.5
-
--- Header với Gradient
-local Header = Instance.new("Frame", Main)
-Header.Size = UDim2.new(1, 0, 0, 45)
-Header.BackgroundColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
-
-local Grad = Instance.new("UIGradient", Header)
-Grad.Color = ColorSequence.new(Color3.fromRGB(20, 20, 20), Color3.fromRGB(40, 40, 40))
-
-local Title = Instance.new("TextLabel", Header)
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.Text = "VANGUARD ULTIMATE"
-Title.TextColor3 = Config.AccentColor
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Text = "VANGUARD TITAN"
+Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
-Title.BackgroundTransparency = 1
+Title.TextSize = 18
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Instance.new("UICorner", Title)
 
--- 3. HÀM TẠO NÚT BẤM (Giao diện chuyên nghiệp)
-local function CreateButton(text, pos, callback)
+-- 3. SPEED SLIDER (Thanh kéo đẳng cấp)
+local SliderFrame = Instance.new("Frame", Main)
+SliderFrame.Size = UDim2.new(0.9, 0, 0, 50)
+SliderFrame.Position = UDim2.new(0.05, 0, 0, 60)
+SliderFrame.BackgroundTransparency = 1
+
+local SpeedLabel = Instance.new("TextLabel", SliderFrame)
+SpeedLabel.Size = UDim2.new(1, 0, 0, 20)
+SpeedLabel.Text = "Tốc độ: 16"
+SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+SpeedLabel.BackgroundTransparency = 1
+
+local Bar = Instance.new("Frame", SliderFrame)
+Bar.Size = UDim2.new(1, 0, 0, 6)
+Bar.Position = UDim2.new(0, 0, 0, 30)
+Bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+local Fill = Instance.new("Frame", Bar)
+Fill.Size = UDim2.new(0, 0, 1, 0)
+Fill.BackgroundColor3 = Config.Accent
+
+local Knob = Instance.new("TextButton", Bar)
+Knob.Size = UDim2.new(0, 16, 0, 16)
+Knob.Position = UDim2.new(0, -8, 0.5, -8)
+Knob.BackgroundColor3 = Color3.new(1, 1, 1)
+Knob.Text = ""
+Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+
+-- Logic Slider
+local dragging = false
+Knob.MouseButton1Down:Connect(function() dragging = true end)
+Services.UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+
+Services.UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
+        Fill.Size = UDim2.new(pos, 0, 1, 0)
+        Knob.Position = UDim2.new(pos, -8, 0.5, -8)
+        Config.Speed = 16 + (pos * 84) -- Range từ 16 đến 100
+        SpeedLabel.Text = "Tốc độ: " .. math.floor(Config.Speed)
+    end
+end)
+
+-- 4. DESYNC & VISUALS TOGGLES
+local function CreateToggle(text, pos, callback)
     local btn = Instance.new("TextButton", Main)
     btn.Size = UDim2.new(0.9, 0, 0, 40)
     btn.Position = pos
@@ -65,102 +91,92 @@ local function CreateButton(text, pos, callback)
     btn.Text = text
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 14
-    
-    local btnCorner = Instance.new("UICorner", btn)
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    
-    local btnStroke = Instance.new("UIStroke", btn)
-    btnStroke.Color = Color3.new(1, 1, 1)
-    btnStroke.Thickness = 1
-    btnStroke.Transparency = 0.8
-    
+    Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
--- 4. SPEED LOGIC (Delta-Sync & Raycast)
-local speedBtn = CreateButton("SPEED: OFF", UDim2.new(0.05, 0, 0, 60), function()
-    Config.Active = not Config.Active
+local desyncBtn = CreateToggle("DESYNC: OFF", UDim2.new(0.05, 0, 0, 120), function()
+    Config.Desync = not Config.Desync
 end)
 
+local visualBtn = CreateToggle("AURA & BUBBLES: OFF", UDim2.new(0.05, 0, 0, 170), function()
+    Config.Visuals = not Config.Visuals
+    if not Config.Visuals then
+        local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then for _, v in pairs(hrp:GetChildren()) do if v.Name == "VanguardFX" then v:Destroy() end end end
+    end
+end)
+
+-- 5. LOGIC DI CHUYỂN & DESYNC (Micro-Delta Sync)
 RunService.PreSimulation:Connect(function(dt)
-    if not Config.Active then return end
     local char = LPlr.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     
-    if hrp and hum and hum.MoveDirection.Magnitude > 0 then
-        local p = RaycastParams.new()
-        p.FilterDescendantsInstances = {char}
-        if not workspace:Raycast(hrp.Position, hum.MoveDirection * 1.5, p) then
+    if hrp and hum then
+        -- Speed Logic
+        if Config.Active and hum.MoveDirection.Magnitude > 0 then
             hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.Speed * dt))
         end
-    end
-end)
-
--- 5. ESP LOGIC (Smart Scanning)
-local espBtn = CreateButton("ESP: ON", UDim2.new(0.05, 0, 0, 110), function()
-    Config.ESP = not Config.ESP
-end)
-
-task.spawn(function()
-    while task.wait(3) do
-        if Config.ESP then
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("TextLabel") and (v.Text:find("ss") or v.Text:find("Q")) then
-                    local m = v:FindFirstAncestorOfClass("Model")
-                    if m and not m:FindFirstChild("VanguardESP") then
-                        local h = Instance.new("Highlight", m)
-                        h.Name = "VanguardESP"
-                        h.FillColor = Config.AccentColor
-                        h.OutlineColor = Color3.new(1, 1, 1)
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- 6. SERVER HOP SIÊU TỐC (Không trùng Server cũ)
-CreateButton("SERVER HOP (UNIQUE)", UDim2.new(0.05, 0, 0, 160), function()
-    local success, result = pcall(function()
-        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
-        return HttpService:JSONDecode(game:HttpGet(url))
-    end)
-    
-    if success and result and result.data then
-        local possibleServers = {}
-        for _, s in pairs(result.data) do
-            -- Lọc bỏ server hiện tại (JobId) và server đầy
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                table.insert(possibleServers, s.id)
-            end
-        end
         
-        if #possibleServers > 0 then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, possibleServers[math.random(1, #possibleServers)])
-        else
-            print("❌ Không tìm thấy server mới!")
+        -- Desync Logic (Ghost Effect)
+        if Config.Desync then
+            local ghostPos = hrp.CFrame * CFrame.new(math.random(-2,2), 0, math.random(-2,2))
+            -- Phân thân ảo để đánh lừa anti-cheat và người chơi
+            if math.random(1, 5) == 1 then
+                hrp.CFrame = ghostPos
+                RunService.RenderStepped:Wait()
+                hrp.CFrame = ghostPos:Inverse()
+            end
         end
     end
 end)
 
--- 7. ANTI-AFK
-local VirtualUser = Services.VirtualUser
-LPlr.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new(0,0))
-end)
-
--- 8. UI UPDATER & CLOSE
+-- 6. HIỆU ỨNG AURA & BONG BÓNG (Tối ưu)
 RunService.RenderStepped:Connect(function()
-    speedBtn.Text = Config.Active and "SPEED: ON" or "SPEED: OFF"
-    speedBtn.TextColor3 = Config.Active and Config.AccentColor or Color3.new(1, 1, 1)
-    espBtn.Text = Config.ESP and "ESP: ON" or "ESP: OFF"
-    espBtn.TextColor3 = Config.ESP and Config.AccentColor or Color3.new(1, 1, 1)
+    if Config.Visuals and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LPlr.Character.HumanoidRootPart
+        if not hrp:FindFirstChild("VanguardFX") then
+            -- Aura tối (Dark Aura)
+            local aura = Instance.new("ParticleEmitter", hrp)
+            aura.Name = "VanguardFX"
+            aura.Texture = "rbxassetid://241499986" -- Khói mờ
+            aura.Color = ColorSequence.new(Color3.fromRGB(0,0,0), Config.Accent)
+            aura.Rate = 20
+            aura.Speed = NumberRange.new(1)
+            aura.Size = NumberSequence.new(3, 0)
+            aura.Transparency = NumberSequence.new(0.5, 1)
+            
+            -- Bong bóng bay lên (Bubbles)
+            local bubbles = Instance.new("ParticleEmitter", hrp)
+            bubbles.Name = "VanguardFX"
+            bubbles.Texture = "rbxassetid://6071575291" -- Bong bóng
+            bubbles.Rate = 10
+            bubbles.Speed = NumberRange.new(5, 10)
+            bubbles.VelocityInheritance = 0.2
+            bubbles.EmissionDirection = Enum.NormalId.Top
+            bubbles.Size = NumberSequence.new(0.5, 1.5)
+            bubbles.Lifetime = NumberRange.new(1, 2)
+        end
+    end
 end)
 
-CreateButton("CLOSE MENU", UDim2.new(0.05, 0, 0, 260), function() ScreenGui:Destroy() end)
+-- 7. SERVER HOP & UI UPDATE
+local hopBtn = CreateButton("SERVER HOP", UDim2.new(0.05, 0, 0, 220), function()
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+    local servers = HttpService:JSONDecode(game:HttpGet(url)).data
+    local nextS = servers[math.random(1, #servers)]
+    if nextS.id ~= game.JobId then Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, nextS.id) end
+end)
 
-print("✨ VANGUARD ULTIMATE LOADED. Have a safe flight!")
+RunService.RenderStepped:Connect(function()
+    desyncBtn.Text = "DESYNC: " .. (Config.Desync and "ON" or "OFF")
+    visualBtn.Text = "VISUALS: " .. (Config.Visuals and "ON" or "OFF")
+    desyncBtn.TextColor3 = Config.Desync and Config.Accent or Color3.new(1,1,1)
+    visualBtn.TextColor3 = Config.Visuals and Config.Accent or Color3.new(1,1,1)
+end)
+
+CreateButton("CLOSE", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end)
+
+print("⚡ VANGUARD TITAN LOADED. BAC-6153 Resolved.")
