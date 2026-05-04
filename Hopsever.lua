@@ -1,33 +1,31 @@
 --[[ 
-    ULTRA-LITE DUPE HELPER (PHIÊN BẢN CHỐNG CRASH)
-    - Tự động Favorite khi ông nhấn giữ E.
-    - Không can thiệp hệ thống sâu, tránh bị Anti-Cheat quét.
+    BRAINROT REMOTE SNIPER
+    - Nhắm thẳng vào các dịch vụ ông vừa chụp ảnh.
+    - Bắt lấy lệnh chuẩn xác khi ông đặt đồ vào Base.
 ]]
 
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
 
-print("⚡ Helper đã sẵn sàng! Giữ E để đặt Pet, Script sẽ tự lo phần Favorite.")
-
--- Lắng nghe phím E
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
     
-    if input.KeyCode == Enum.KeyCode.E then
-        -- Đợi 0.8 giây (gần lúc thanh E đầy)
-        task.wait(0.85) 
-        
-        -- Nã lệnh chuột phải (Favorite) liên tục 20 lần để gây lag logic
-        for i = 1, 20 do
-            task.spawn(function()
-                -- Lệnh này mô phỏng việc ông bấm chuột phải vào vị trí Pet
-                -- Game sẽ nhận tín hiệu Favorite ngay khoảnh khắc đặt đồ
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                task.wait()
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 1, false, game, 1)
-            end)
+    if method == "FireServer" or method == "InvokeServer" then
+        local name = self.Name:lower()
+        -- Lọc đúng những từ khóa trong log của ông
+        if name:find("place") or name:find("brainrot") or name:find("replace") then
+            print("🎯 ĐÃ TÚM ĐƯỢC REMOTE: " .. self:GetFullName())
+            print("📦 Dữ liệu gửi đi:")
+            for i, v in pairs(args) do
+                print("   [" .. i .. "]:", v)
+            end
+            print("-------------------------")
         end
-        print("🚀 Đã nã Favorite! Kiểm tra xem Pet có bị kẹt không.")
     end
+    return old(self, ...)
 end)
+
+setreadonly(mt, true)
+print("🚀 Hệ thống nghe lén đã bật! Giờ hãy giữ E đặt đồ vào Base đi ông.")
