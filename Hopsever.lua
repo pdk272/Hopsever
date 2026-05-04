@@ -1,31 +1,28 @@
 --[[ 
-    BRAINROT REMOTE SNIPER
-    - Nhắm thẳng vào các dịch vụ ông vừa chụp ảnh.
-    - Bắt lấy lệnh chuẩn xác khi ông đặt đồ vào Base.
+    ADVANCED GIFT DUPEER (NETWORK.REV EDITION)
+    - Nhắm vào hệ thống Network.rev của game.
+    - Tạo Race Condition bằng cách nã lệnh tặng liên tục.
 ]]
 
-local mt = getrawmetatable(game)
-local old = mt.__namecall
-setreadonly(mt, false)
+local Network = game:GetService("ReplicatedStorage").Shared.Packages.Network.rev
+local SendGift = Network.__SendGift
 
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if method == "FireServer" or method == "InvokeServer" then
-        local name = self.Name:lower()
-        -- Lọc đúng những từ khóa trong log của ông
-        if name:find("place") or name:find("brainrot") or name:find("replace") then
-            print("🎯 ĐÃ TÚM ĐƯỢC REMOTE: " .. self:GetFullName())
-            print("📦 Dữ liệu gửi đi:")
-            for i, v in pairs(args) do
-                print("   [" .. i .. "]:", v)
-            end
-            print("-------------------------")
-        end
+-- THAY THÔNG TIN CỦA ÔNG VÀO ĐÂY
+local TargetPlayer = "TenNickCloneCuaOng"
+local PetID = "MA_ID_PET_ONG_BAT_DUOC" 
+
+print("🚀 Đang khởi động máy khoan tín hiệu Gift...")
+
+local function StartDupe()
+    -- Nã 50 lệnh tặng cùng lúc
+    for i = 1, 50 do
+        task.spawn(function()
+            -- Lưu ý: Thứ tự tham số (Target, ID) phải giống hệt lúc ông bắt được ở Remote Spy
+            SendGift:FireServer(TargetPlayer, PetID)
+        end)
     end
-    return old(self, ...)
-end)
+    print("✅ Đã nã xong! Kiểm tra nick Clone xem có nhận được nhiều hơn 1 con không.")
+end
 
-setreadonly(mt, true)
-print("🚀 Hệ thống nghe lén đã bật! Giờ hãy giữ E đặt đồ vào Base đi ông.")
+-- Chạy lệnh
+StartDupe()
