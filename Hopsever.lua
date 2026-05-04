@@ -1,8 +1,7 @@
 --[[ 
-    VANGUARD TITAN V3 - QUANTUM EDITION
-    - Desync Button: Trigger "Quantum Cloner" Gear
-    - Speed Slider: Fixed logic with Toggle
-    - GUI: Integrated Bubbles & Aura Effects
+    VANGUARD TITAN V3.1 - SPEED FIX & GHOST COMBO
+    - Fix Speed Slider: Real-time velocity update
+    - Ghost Combo: Quantum Cloner + Change with Clone
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -11,20 +10,16 @@ local RunService = Services.RunService
 local HttpService = Services.HttpService
 local UserInputService = Services.UserInputService
 
--- 1. CONFIGURATION
 local Config = {
     Speed = 16,
     SpeedEnabled = false,
-    Accent = Color3.fromRGB(170, 0, 255) -- Màu tím Quantum
+    Accent = Color3.fromRGB(170, 0, 255)
 }
 
--- 2. TẠO GUI ĐẲNG CẤP (TITAN UI V3)
+-- 1. TẠO GUI (Giữ nguyên Visuals đẹp)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV3"
-ScreenGui.ResetOnSpawn = false
-
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 280, 0, 360)
+Main.Size = UDim2.new(0, 280, 0, 380)
 Main.Position = UDim2.new(0.5, -140, 0.3, 0)
 Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 Main.BorderSizePixel = 0
@@ -33,49 +28,34 @@ Main.Draggable = true
 Main.ClipsDescendants = true
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
--- [HIỆU ỨNG UI: AURA VIỀN TÍM]
+-- Hiệu ứng Bong bóng & Aura (Giữ nguyên phong cách)
 local AuraStroke = Instance.new("UIStroke", Main)
 AuraStroke.Color = Config.Accent
 AuraStroke.Thickness = 2.5
 AuraStroke.Transparency = 0.3
 
--- [HIỆU ỨNG UI: BONG BÓNG BAY TRÊN MENU]
 task.spawn(function()
-    while true do
-        if Main then
-            local bubble = Instance.new("Frame", Main)
-            bubble.Size = UDim2.new(0, math.random(4, 12), 0, math.random(4, 12))
-            bubble.Position = UDim2.new(math.random(0, 100) / 100, 0, 1, 0)
-            bubble.BackgroundColor3 = Config.Accent
-            bubble.BackgroundTransparency = 0.6
-            Instance.new("UICorner", bubble).CornerRadius = UDim.new(1, 0)
-            
-            local upSpeed = math.random(2, 4)
-            task.spawn(function()
-                for i = 1, 120 do
-                    if bubble and bubble.Parent then
-                        bubble.Position = bubble.Position - UDim2.new(0, 0, 0.008 * upSpeed, 0)
-                        bubble.BackgroundTransparency = bubble.BackgroundTransparency + 0.008
-                        task.wait(0.02)
-                    end
-                end
-                if bubble then bubble:Destroy() end
-            end)
-        end
-        task.wait(0.4)
+    while Main do
+        local bubble = Instance.new("Frame", Main)
+        bubble.Size = UDim2.new(0, math.random(4, 10), 0, math.random(4, 10))
+        bubble.Position = UDim2.new(math.random(0, 100) / 100, 0, 1, 0)
+        bubble.BackgroundColor3 = Config.Accent
+        bubble.BackgroundTransparency = 0.6
+        Instance.new("UICorner", bubble).CornerRadius = UDim.new(1, 0)
+        task.spawn(function()
+            for i = 1, 100 do
+                if not bubble or not bubble.Parent then break end
+                bubble.Position = bubble.Position - UDim2.new(0, 0, 0.01, 0)
+                bubble.BackgroundTransparency = bubble.BackgroundTransparency + 0.01
+                task.wait(0.02)
+            end
+            if bubble then bubble:Destroy() end
+        end)
+        task.wait(0.6)
     end
 end)
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 45)
-Title.Text = "VANGUARD TITAN V3"
-Title.TextColor3 = Config.Accent
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", Title)
-
--- 3. SPEED SLIDER & TOGGLE (FIXED)
+-- 2. SPEED SYSTEM (Cải tiến Logic Speed)
 local SliderFrame = Instance.new("Frame", Main)
 SliderFrame.Size = UDim2.new(0.9, 0, 0, 80)
 SliderFrame.Position = UDim2.new(0.05, 0, 0, 60)
@@ -97,7 +77,7 @@ end)
 local SpeedLabel = Instance.new("TextLabel", SliderFrame)
 SpeedLabel.Size = UDim2.new(1, 0, 0, 20)
 SpeedLabel.Position = UDim2.new(0, 0, 0, 40)
-SpeedLabel.Text = "Vận tốc: 16"
+SpeedLabel.Text = "Tốc độ: 16"
 SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
 SpeedLabel.BackgroundTransparency = 1
 
@@ -125,42 +105,65 @@ UserInputService.InputChanged:Connect(function(input)
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         Fill.Size = UDim2.new(pos, 0, 1, 0)
         Knob.Position = UDim2.new(pos, -8, 0.5, -8)
-        Config.Speed = 16 + (pos * 84)
-        SpeedLabel.Text = "Vận tốc: " .. math.floor(Config.Speed)
+        Config.Speed = 16 + (pos * 134) -- Tăng giới hạn lên 150 cho máu lửa
+        SpeedLabel.Text = "Tốc độ: " .. math.floor(Config.Speed)
     end
 end)
 
--- 4. DESYNC BUTTON (QUANTUM CLONER LOGIC)
+-- 3. GHOST COMBO (Quantum Cloner + Change with Clone)
 local desyncBtn = Instance.new("TextButton", Main)
 desyncBtn.Size = UDim2.new(0.9, 0, 0, 45)
 desyncBtn.Position = UDim2.new(0.05, 0, 0, 165)
 desyncBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-desyncBtn.Text = "KÍCH HOẠT DESYNC (GHOST)"
+desyncBtn.Text = "GHOST COMBO (QUANTUM)"
 desyncBtn.TextColor3 = Config.Accent
 desyncBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", desyncBtn)
 
 desyncBtn.MouseButton1Click:Connect(function()
-    local backpack = LPlr:FindFirstChild("Backpack")
+    local bp = LPlr:FindFirstChild("Backpack")
     local char = LPlr.Character
-    if backpack and char then
-        -- Tìm Quantum Cloner
-        local tool = backpack:FindFirstChild("Quantum Cloner") or char:FindFirstChild("Quantum Cloner")
-        if tool and tool:IsA("Tool") then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            hum:EquipTool(tool)
+    if bp and char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        
+        -- BƯỚC 1: Dùng Quantum Cloner
+        local tool1 = bp:FindFirstChild("Quantum Cloner") or char:FindFirstChild("Quantum Cloner")
+        if tool1 then
+            hum:EquipTool(tool1)
             task.wait(0.1)
-            tool:Activate()
+            tool1:Activate()
             task.wait(0.2)
-            hum:UnequipTools()
-            print("👻 Quantum Ghost Activated!")
-        else
-            print("❌ Không tìm thấy Quantum Cloner!")
+        end
+        
+        -- BƯỚC 2: Dùng Change with Clone
+        local tool2 = bp:FindFirstChild("Change with Clone") or char:FindFirstChild("Change with Clone")
+        if tool2 then
+            hum:EquipTool(tool2)
+            task.wait(0.1)
+            tool2:Activate()
+            task.wait(0.2)
+        end
+        
+        hum:UnequipTools()
+        print("👻 Quantum Combo Executed!")
+    end
+end)
+
+-- 4. SPEED LOGIC (SỬA LỖI TỐC ĐỘ GIỐNG NHAU)
+RunService.Stepped:Connect(function(_, dt)
+    if Config.SpeedEnabled and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LPlr.Character.HumanoidRootPart
+        local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
+        
+        if hum.MoveDirection.Magnitude > 0 then
+            -- Sử dụng công thức cộng bù vận tốc để thực sự thay đổi speed
+            local velocity = hum.MoveDirection * (Config.Speed - 16) -- 16 là speed mặc định
+            hrp.CFrame = hrp.CFrame + (velocity * dt)
         end
     end
 end)
 
--- 5. SERVER HOP & ANTI-AFK
+-- 5. SERVER HOP & CLOSE
 local function CreateBtn(text, pos, callback)
     local btn = Instance.new("TextButton", Main)
     btn.Size = UDim2.new(0.9, 0, 0, 40)
@@ -176,27 +179,12 @@ end
 CreateBtn("SERVER HOP (FAST)", UDim2.new(0.05, 0, 0, 220), function()
     local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
     local data = HttpService:JSONDecode(game:HttpGet(url)).data
-    local nextS = data[math.random(1, #data)]
-    if nextS.id ~= game.JobId then Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, nextS.id) end
-end)
-
--- Anti-AFK
-LPlr.Idled:Connect(function()
-    Services.VirtualUser:CaptureController()
-    Services.VirtualUser:ClickButton2(Vector2.new(0,0))
-end)
-
--- 6. SPEED LOGIC (PreSimulation Sync)
-RunService.PreSimulation:Connect(function(dt)
-    if Config.SpeedEnabled and LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LPlr.Character.HumanoidRootPart
-        local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum.MoveDirection.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.Speed * dt))
-        end
+    if data then
+        local nextS = data[math.random(1, #data)]
+        Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, nextS.id)
     end
 end)
 
 CreateBtn("ĐÓNG MENU", UDim2.new(0.05, 0, 0, 310), function() ScreenGui:Destroy() end)
 
-print("🌌 VANGUARD TITAN V3 LOADED. Quantum Cloner Ready.")
+print("🌌 VANGUARD TITAN V3.1 LOADED. Combo Ready.")
