@@ -1,8 +1,8 @@
 --[[ 
-    VANGUARD TITAN V5.3 - FAST COMBO
-    - Trigger: Giữ E 0.4 giây (Siêu nhanh).
+    VANGUARD TITAN V5.4 - REMOTE OVERRIDE
+    - Fix: Dùng tất cả Gear cùng lúc bằng cách bypass động tác cầm đồ.
+    - Trigger: Giữ E 0.4 giây.
     - Gears: Bee, Boogie, Medusa, Megaphone.
-    - Speed: Stealth CFrame (Né BAC-6637).
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -14,13 +14,13 @@ local Config = {
     SpeedValue = 16,
     Enabled = false,
     Accent = Color3.fromRGB(170, 0, 255),
-    HoldTime = 0.4, -- Đã chỉnh xuống 0.4s theo ý ông
+    HoldTime = 0.4,
     ComboKeywords = {"Bee", "Boogie", "Medusa", "Megaphone"}
 }
 
 -- 1. GUI
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV53"
+ScreenGui.Name = "TitanV54"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
@@ -33,14 +33,14 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "TITAN V5.3 - FAST E"
+Title.Text = "TITAN V5.4 - FIX COMBO"
 Title.TextSize = 22
 Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Title)
 
--- 2. SPEED SYSTEM
+-- 2. SPEED SYSTEM (STEALTH)
 local SpeedToggle = Instance.new("TextButton", Main)
 SpeedToggle.Size = UDim2.new(0.9, 0, 0, 60)
 SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
@@ -68,7 +68,7 @@ local Knob = Instance.new("TextButton", Bar)
 Knob.Size = UDim2.new(0, 28, 0, 28)
 Knob.Position = UDim2.new(0, -14, 0.5, -14)
 Knob.Text = ""
-Knob.BackgroundColor3 = Color3.new(1, 1, 1)
+Knob.BackgroundColor3 = Config.Accent
 Instance.new("UICorner", Knob)
 
 SpeedToggle.MouseButton1Click:Connect(function()
@@ -99,46 +99,45 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- 3. SIÊU TỐC COMBO (0.4S)
+-- 3. COMBO LOGIC (FIX LỖI CHỈ DÙNG 1 MÓN)
 local isHolding = false
 local holdStartTime = 0
 
-local function FastFire()
+local function UnifiedFire()
     local bp = LPlr:FindFirstChild("Backpack")
     local char = LPlr.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hum then return end
+    if not char then return end
 
     for _, keyword in pairs(Config.ComboKeywords) do
-        local tool = nil
-        for _, v in pairs(bp:GetChildren()) do
-            if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then
-                tool = v break
+        task.spawn(function()
+            local tool = nil
+            -- Tìm tool
+            for _, v in pairs(bp:GetChildren()) do
+                if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then tool = v break end
             end
-        end
-        if not tool then
-            for _, v in pairs(char:GetChildren()) do
-                if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then
-                    tool = v break
+            if not tool then
+                for _, v in pairs(char:GetChildren()) do
+                    if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then tool = v break end
                 end
             end
-        end
 
-        if tool then
-            task.spawn(function()
-                -- Ép cầm gear siêu nhanh
-                hum:EquipTool(tool)
-                -- Nã Remote đồng thời bấm Activate
-                local remote = tool:FindFirstChildOfClass("RemoteEvent") or tool:FindFirstChild("Remote")
-                if remote then remote:FireServer() end
+            if tool then
+                -- Cách dùng 1: Nã Remote (Kích hoạt trực tiếp không cần cầm)
+                local rem = tool:FindFirstChildOfClass("RemoteEvent") or tool:FindFirstChild("Remote")
+                if rem then
+                    rem:FireServer()
+                end
+                
+                -- Cách dùng 2: Bypass cầm đồ (Dùng nhanh rồi cất ngay để món sau chen vào)
+                char.Humanoid:EquipTool(tool)
                 tool:Activate()
-                task.wait(0.1)
-                tool:Activate() -- Bấm bồi phát nữa
-            end)
-        end
+                task.wait(0.01)
+                tool:Activate()
+                task.wait(0.05)
+                char.Humanoid:UnequipTools()
+            end
+        end)
     end
-    task.wait(0.3)
-    hum:UnequipTools()
 end
 
 UIS.InputBegan:Connect(function(input, processed)
@@ -149,20 +148,18 @@ UIS.InputBegan:Connect(function(input, processed)
         task.spawn(function()
             while isHolding do
                 if tick() - holdStartTime >= Config.HoldTime then
-                    FastFire()
+                    UnifiedFire()
                     isHolding = false
                     break
                 end
-                task.wait() -- Check liên tục từng frame
+                task.wait()
             end
         end)
     end
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.E then
-        isHolding = false
-    end
+    if input.KeyCode == Enum.KeyCode.E then isHolding = false end
 end)
 
 -- 4. SERVER HOP & ĐÓNG
@@ -187,4 +184,4 @@ end)
 
 QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 
-print("⚡ TITAN V5.3 LOADED. Trigger 0.4s Ready.")
+print("⚡ TITAN V5.4 LOADED. Unified Combo Fix Ready.")
