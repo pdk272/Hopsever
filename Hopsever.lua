@@ -1,8 +1,8 @@
 --[[ 
-    VANGUARD TITAN V5.0 - BAC-6637 BYPASS
-    - Speed: Stealth Mode (Lướt mượt né Anti-cheat BAC-6637)
-    - Combo: Giữ phím E 1 giây để Auto dùng Bee, Boogie, Medusa.
-    - UI: Chữ siêu to, thanh kéo hiện số rõ ràng.
+    VANGUARD TITAN V5.1 - COMBO SYSTEM FIX
+    - Gear: Bee Launcher, Boogie Bomb, Medusa's Head, Megaphone.
+    - Trigger: Giữ phím E 1 giây (Auto Activate Fix).
+    - Speed: Stealth Mode né BAC-6637.
 ]]
 
 local Services = setmetatable({}, {__index = function(t, k) return game:GetService(k) end})
@@ -14,13 +14,14 @@ local Config = {
     SpeedValue = 16,
     Enabled = false,
     Accent = Color3.fromRGB(170, 0, 255),
-    HoldTime = 1, -- Giữ E 1 giây
-    ComboGear = {"Bee Launcher", "Boogie Bomb", "Medusa's Head"}
+    HoldTime = 1,
+    -- Danh sách gear cần tìm (tìm theo từ khóa để tránh sai tên)
+    ComboGear = {"Bee", "Boogie", "Medusa", "Megaphone"}
 }
 
--- 1. GUI (TO RÕ THEO YÊU CẦU)
+-- 1. GUI (TO RÕ)
 local ScreenGui = Instance.new("ScreenGui", LPlr.PlayerGui)
-ScreenGui.Name = "TitanV5"
+ScreenGui.Name = "TitanV51"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
@@ -33,14 +34,14 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "VANGUARD TITAN V5"
+Title.Text = "TITAN V5.1 - COMBO E"
 Title.TextSize = 22
 Title.TextColor3 = Config.Accent
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", Title)
 
--- 2. SPEED SYSTEM (BYPASS BAC-6637)
+-- 2. SPEED SYSTEM (BYPASS)
 local SpeedToggle = Instance.new("TextButton", Main)
 SpeedToggle.Size = UDim2.new(0.9, 0, 0, 60)
 SpeedToggle.Position = UDim2.new(0.05, 0, 0, 65)
@@ -71,7 +72,6 @@ Knob.Text = ""
 Knob.BackgroundColor3 = Color3.new(1, 1, 1)
 Instance.new("UICorner", Knob)
 
--- LOGIC SPEED STEALTH (Dùng Delta Time mượt hơn)
 SpeedToggle.MouseButton1Click:Connect(function()
     Config.Enabled = not Config.Enabled
     SpeedToggle.Text = Config.Enabled and "STEALTH SPEED: ON" or "STEALTH SPEED: OFF"
@@ -85,7 +85,7 @@ UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         Knob.Position = UDim2.new(pos, -14, 0.5, -14)
-        Config.SpeedValue = 16 + (pos * 84) -- Giới hạn 100 để né BAC
+        Config.SpeedValue = 16 + (pos * 104)
         SpeedLabel.Text = "TỐC ĐỘ: " .. math.floor(Config.SpeedValue)
     end
 end)
@@ -95,36 +95,47 @@ RunService.Heartbeat:Connect(function(dt)
         local hrp = LPlr.Character.HumanoidRootPart
         local hum = LPlr.Character:FindFirstChildOfClass("Humanoid")
         if hum.MoveDirection.Magnitude > 0 then
-            -- Bypass bằng cách lướt nhẹ theo khung hình, không tạo Velocity đột ngột
             hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Config.SpeedValue * dt * 0.95))
         end
     end
 end)
 
--- 3. COMBO TRIPLE GEAR (GIỮ E 1S)
+-- 3. FIX AUTO USE GEAR COMBO (GIỮ E 1S)
 local isHolding = false
 local holdStartTime = 0
 
-local function UseCombo()
+local function FireCombo()
     local char = LPlr.Character
     local bp = LPlr:FindFirstChild("Backpack")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    
     if not hum then return end
-    
-    print("🔥 Đang kích hoạt TRIPLE COMBO...")
-    
-    for _, gearName in pairs(Config.ComboGear) do
-        local tool = bp:FindFirstChild(gearName) or char:FindFirstChild(gearName)
+
+    for _, keyword in pairs(Config.ComboGear) do
+        local tool = nil
+        -- Tìm gear theo từ khóa (tránh sai tên)
+        for _, v in pairs(bp:GetChildren()) do
+            if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then
+                tool = v break
+            end
+        end
+        if not tool then
+            for _, v in pairs(char:GetChildren()) do
+                if v:IsA("Tool") and v.Name:lower():find(keyword:lower()) then
+                    tool = v break
+                end
+            end
+        end
+
+        -- Nếu thấy gear thì dùng
         if tool then
             hum:EquipTool(tool)
-            task.spawn(function()
-                task.wait(0.05)
-                tool:Activate()
-            end)
+            task.wait(0.1) -- Đợi cầm lên chắc chắn
+            tool:Activate()
+            task.wait(0.05)
+            tool:Activate() -- Bấm thêm phát nữa cho chắc
         end
     end
-    task.wait(0.3)
+    task.wait(0.2)
     hum:UnequipTools()
 end
 
@@ -133,13 +144,11 @@ UIS.InputBegan:Connect(function(input, processed)
     if input.KeyCode == Enum.KeyCode.E then
         isHolding = true
         holdStartTime = tick()
-        
-        -- Vòng lặp kiểm tra thời gian giữ
         task.spawn(function()
             while isHolding do
                 if tick() - holdStartTime >= Config.HoldTime then
-                    UseCombo()
-                    isHolding = false -- Chỉ dùng 1 lần mỗi lần giữ
+                    FireCombo()
+                    isHolding = false
                     break
                 end
                 task.wait(0.1)
@@ -154,7 +163,7 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- 4. SERVER HOP & TẮT MENU
+-- 4. SERVER HOP & ĐÓNG
 local function QuickBtn(text, pos, callback)
     local b = Instance.new("TextButton", Main)
     b.Size = UDim2.new(0.9, 0, 0, 45)
@@ -176,4 +185,4 @@ end)
 
 QuickBtn("TẮT MENU", UDim2.new(0.05, 0, 0, 320), function() ScreenGui:Destroy() end).BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 
-print("✅ VANGUARD TITAN V5.0 LOADED. Giữ E 1s để Combo.")
+print("💎 VANGUARD TITAN V5.1 LOADED. 4 Gears Combo Ready.")
