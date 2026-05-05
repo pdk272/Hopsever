@@ -1,9 +1,8 @@
 --[[
-    SOLARA OMNI-FIX (V26.0)
-    - Fix ESP: Box + Name (Nhìn xuyên bản đồ)
-    - Fix Aimbot: Khóa mục tiêu mượt (Mouse-based)
-    - Fix Speed: Thuật toán Velocity mượt mà
-    - Fix Target: Quét cả Player và Pet
+    SOLARA OMNI-FIX (V27.0)
+    - Fix 1: Super Spin Kick (Fling) - Quay cực nhanh để ép văng mục tiêu.
+    - Fix 2: Custom Drag - Di chuyển mượt mà cả 3 Panel.
+    - Fix 3: Teleport Pet/Player - Quét Model và BasePart chính xác.
 ]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -26,7 +25,31 @@ local Titan = {
     AnnoyTarget = nil
 }
 
--- 1. TẠO BONG BÓNG TRANG TRÍ (GIỮ NGUYÊN VÌ ÔNG THÍCH)
+-- 1. HÀM KÉO THẢ MƯỢT (CUSTOM DRAG)
+local function MakeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+end
+
+-- 2. TẠO BONG BÓNG
 local function CreateBubbles(parent)
     task.spawn(function()
         while true do
@@ -48,12 +71,11 @@ local function CreateBubbles(parent)
     end)
 end
 
--- 2. KHỞI TẠO GUI (3 PANEL)
+-- 3. KHỞI TẠO GUI (3 PANEL)
 local ScreenGui = Instance.new("ScreenGui", LPlr:WaitForChild("PlayerGui"))
-ScreenGui.Name = "TitanV26"
+ScreenGui.Name = "TitanV27"
 ScreenGui.ResetOnSpawn = false
 
--- HÀM TẠO NÚT CHUẨN
 local function NewBtn(parent, text, color, callback)
     local b = Instance.new("TextButton", parent)
     b.Size = UDim2.new(0.9, 0, 0, 45)
@@ -75,6 +97,7 @@ Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 Main.BorderSizePixel = 0
 Instance.new("UICorner", Main)
 CreateBubbles(Main)
+MakeDraggable(Main) -- Áp dụng kéo thả
 
 local Header = Instance.new("Frame", Main)
 Header.Size = UDim2.new(1, 0, 0, 40)
@@ -100,12 +123,13 @@ local MidList = Instance.new("UIListLayout", MidScroll)
 MidList.Padding = UDim.new(0, 12)
 MidList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- PANEL TRÁI (INFO) & PHẢI (UTILS)
+-- PANEL TRÁI (INFO)
 local LeftFrame = Instance.new("Frame", ScreenGui)
 LeftFrame.Size = UDim2.new(0, 200, 0, 350)
 LeftFrame.Position = UDim2.new(0.5, -400, 0.4, -175)
 LeftFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Instance.new("UICorner", LeftFrame)
+MakeDraggable(LeftFrame) -- Áp dụng kéo thả
 
 local Avatar = Instance.new("ImageLabel", LeftFrame)
 Avatar.Size = UDim2.new(0, 100, 0, 100)
@@ -113,11 +137,13 @@ Avatar.Position = UDim2.new(0.5, -50, 0.1, 0)
 Avatar.Image = "rbxthumb://type=AvatarHeadShot&id="..LPlr.UserId.."&w=150&h=150"
 Instance.new("UICorner", Avatar).CornerRadius = UDim.new(1, 0)
 
+-- PANEL PHẢI (UTILS)
 local RightFrame = Instance.new("Frame", ScreenGui)
 RightFrame.Size = UDim2.new(0, 240, 0, 450)
 RightFrame.Position = UDim2.new(0.5, 200, 0.4, -225)
 RightFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Instance.new("UICorner", RightFrame)
+MakeDraggable(RightFrame) -- Áp dụng kéo thả
 local RightList = Instance.new("UIListLayout", RightFrame)
 RightList.Padding = UDim.new(0, 12)
 RightList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -140,9 +166,9 @@ end
 SetToggle("L", "<", LeftFrame)
 SetToggle("R", ">", RightFrame)
 
--- 3. CHỨC NĂNG SỬA LỖI (FIXED FEATURES)
+-- 4. CHỨC NĂNG SỬA LỖI VÀ NÂNG CẤP
 
--- FIX: SPEED SLIDER
+-- SPEED SLIDER
 local SpeedLabel = Instance.new("TextLabel", MidScroll)
 SpeedLabel.Size = UDim2.new(0.9, 0, 0, 30)
 SpeedLabel.Text = "SPEED: [16]"
@@ -201,12 +227,12 @@ TargetBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 TargetBox.TextColor3 = Color3.new(1, 1, 1)
 Instance.new("UICorner", TargetBox)
 
--- FIX: TELEPORT NAME OR PET
+-- FIX 3: TELEPORT CẢ PLAYER LẪN PET (MODEL & PART)
 NewBtn(RightFrame, "TELEPORT", Color3.fromRGB(0, 150, 255), function()
     local t = TargetBox.Text:lower()
     if t == "" then return end
     
-    -- Ưu tiên tìm Player trước
+    -- Ưu tiên tìm Player
     for _, p in pairs(Players:GetPlayers()) do
         if p.Name:lower():find(t) or p.DisplayName:lower():find(t) then
             if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -216,11 +242,16 @@ NewBtn(RightFrame, "TELEPORT", Color3.fromRGB(0, 150, 255), function()
         end
     end
     
-    -- Nếu không thấy Player, tìm Pet trong Workspace
+    -- Sau đó tìm Pet (Hỗ trợ Model và BasePart)
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find(t) and v:IsA("BasePart") then
-            LPlr.Character.HumanoidRootPart.CFrame = v.CFrame
-            return
+        if v.Name:lower():find(t) then
+            if v:IsA("Model") and v.PrimaryPart then
+                LPlr.Character.HumanoidRootPart.CFrame = v.PrimaryPart.CFrame
+                return
+            elseif v:IsA("BasePart") then
+                LPlr.Character.HumanoidRootPart.CFrame = v.CFrame
+                return
+            end
         end
     end
 end)
@@ -236,17 +267,20 @@ NewBtn(RightFrame, "AIMBOT: OFF", nil, function(b)
     b.TextColor3 = Titan.Aimbot and Titan.Secondary or Color3.new(1, 1, 1)
 end)
 
--- FIX: KICK / ANNOY PLAYER
+-- FIX 1: KICK / ANNOY PLAYER (SUPER SPIN FLING)
 local KickBtn = NewBtn(RightFrame, "KICK/ANNOY: OFF", Color3.fromRGB(200, 0, 0), function(b)
     if Titan.AnnoyTarget then
-        Titan.AnnoyTarget = nil -- Tắt Annoy
+        Titan.AnnoyTarget = nil
         b.Text = "KICK/ANNOY: OFF"
+        -- Dừng xoay
+        local myHrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+        if myHrp then myHrp.RotVelocity = Vector3.new(0, 0, 0) end
     else
         local t = TargetBox.Text:lower()
         for _, p in pairs(Players:GetPlayers()) do
             if p.Name:lower():find(t) or p.DisplayName:lower():find(t) then
                 Titan.AnnoyTarget = p.Name
-                b.Text = "ANNOYING: " .. p.Name
+                b.Text = "FLINGING: " .. p.Name
                 break
             end
         end
@@ -261,9 +295,9 @@ NewBtn(LeftFrame, "ESP: OFF", nil, function(b)
     b.TextColor3 = Titan.ESP and Titan.Secondary or Color3.new(1, 1, 1)
 end)
 
--- 4. CORE ENGINE (CÁC VÒNG LẶP SỬA LỖI)
+-- 5. CORE ENGINE (CÁC VÒNG LẶP HỆ THỐNG)
 
--- Fix: ESP Box & Name
+-- ESP Box & Name
 RunService.RenderStepped:Connect(function()
     if Titan.ESP then
         for _, p in pairs(Players:GetPlayers()) do
@@ -272,10 +306,9 @@ RunService.RenderStepped:Connect(function()
                 local tag = hrp:FindFirstChild("TitanESPBox")
                 
                 if not tag then
-                    -- Tạo Box và Name bằng BillboardGui để thấy từ xa
                     tag = Instance.new("BillboardGui", hrp)
                     tag.Name = "TitanESPBox"
-                    tag.Size = UDim2.new(4, 0, 5, 0) -- Kích thước hộp
+                    tag.Size = UDim2.new(4, 0, 5, 0) 
                     tag.AlwaysOnTop = true
                     
                     local box = Instance.new("Frame", tag)
@@ -297,7 +330,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Xóa ESP khi tắt
         for _, p in pairs(Players:GetPlayers()) do
             if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local tag = p.Character.HumanoidRootPart:FindFirstChild("TitanESPBox")
@@ -307,7 +339,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Fix: Aimbot (Mượt và theo chuột)
+-- Aimbot (Mượt và theo chuột)
 RunService.RenderStepped:Connect(function()
     if Titan.Aimbot then
         local target = nil
@@ -327,28 +359,29 @@ RunService.RenderStepped:Connect(function()
                 end
             end
         end
-        
         if target then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
         end
     end
 end)
 
--- Fix: Annoy/Kick (Ép vật lý liên tục)
+-- Fix 1: Super Spin Fling (Kick Player)
 RunService.Stepped:Connect(function()
     if Titan.AnnoyTarget then
         local targetPlayer = Players:FindFirstChild(Titan.AnnoyTarget)
         if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local myHrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
             if myHrp then
-                -- Dịch chuyển lồng vào người đối phương để gây lỗi vật lý văng tung tóe
-                myHrp.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 0)
+                -- Ép nhân vật quay cực nhanh
+                myHrp.RotVelocity = Vector3.new(0, 50000, 0)
+                -- Dịch chuyển đè lên đối phương
+                myHrp.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
             end
         end
     end
 end)
 
--- Fix: Speed & Noclip & Fly
+-- Speed & Noclip & Fly
 RunService.Heartbeat:Connect(function(dt)
     local char = LPlr.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -364,7 +397,6 @@ RunService.Heartbeat:Connect(function(dt)
         hrp.Velocity = Vector3.zero
         hrp.CFrame = hrp.CFrame + (d * 100 * dt)
     else
-        -- Speed CFrame Override
         if Titan.Speed > 16 and hum.MoveDirection.Magnitude > 0 then
             hrp.CFrame = hrp.CFrame + (hum.MoveDirection * ((Titan.Speed - 16) * dt))
         end
@@ -386,4 +418,4 @@ UIS.InputBegan:Connect(function(i, g)
     end
 end)
 
-print("🌌 TITAN V26.0 - ĐÃ FIX TOÀN BỘ LỖI!")
+print("🌌 TITAN V27.0 - ULTIMATE FLING & DRAG READY!")
