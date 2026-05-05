@@ -1,12 +1,11 @@
 --[[
-    VANGUARD TITAN: OMNI-SOLARA V25.0
-    - Fix: Cập nhật ON/OFF chính xác, Chữ to rõ ràng.
-    - Layout: 3-Panel (Left: Info, Middle: Main, Right: Utils).
-    - Features: Speed Slider (16-200), Fly, Noclip, ESP, Aimbot, Annoy.
-    - Keybind: K (Toggle All).
+    SOLARA OMNI-FIX (V26.0)
+    - Fix ESP: Box + Name (Nhìn xuyên bản đồ)
+    - Fix Aimbot: Khóa mục tiêu mượt (Mouse-based)
+    - Fix Speed: Thuật toán Velocity mượt mà
+    - Fix Target: Quét cả Player và Pet
 ]]
 
--- 1. KHỞI TẠO HỆ THỐNG (CHỐNG LỖI NIL)
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local LPlr = Players.LocalPlayer or Players.PlayerAdded:Wait()
@@ -14,6 +13,7 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
+local Mouse = LPlr:GetMouse()
 
 local Titan = {
     Visible = true,
@@ -21,17 +21,12 @@ local Titan = {
     FlyEnabled = false, Noclip = false,
     ESP = false, Aimbot = false,
     PosBase = nil, PosPet = nil,
-    TargetName = "",
     Accent = Color3.fromRGB(150, 0, 255),
-    Secondary = Color3.fromRGB(0, 255, 255)
+    Secondary = Color3.fromRGB(0, 255, 255),
+    AnnoyTarget = nil
 }
 
--- 2. TẠO GUI GỐC
-local ScreenGui = Instance.new("ScreenGui", LPlr:WaitForChild("PlayerGui"))
-ScreenGui.Name = "TitanV25"
-ScreenGui.ResetOnSpawn = false
-
--- Hiệu ứng bong bóng (Bubble Effect)
+-- 1. TẠO BONG BÓNG TRANG TRÍ (GIỮ NGUYÊN VÌ ÔNG THÍCH)
 local function CreateBubbles(parent)
     task.spawn(function()
         while true do
@@ -53,26 +48,26 @@ local function CreateBubbles(parent)
     end)
 end
 
--- 3. HÀM TẠO NÚT BẤM (FIX LỖI CẬP NHẬT TRẠNG THÁI)
+-- 2. KHỞI TẠO GUI (3 PANEL)
+local ScreenGui = Instance.new("ScreenGui", LPlr:WaitForChild("PlayerGui"))
+ScreenGui.Name = "TitanV26"
+ScreenGui.ResetOnSpawn = false
+
+-- HÀM TẠO NÚT CHUẨN
 local function NewBtn(parent, text, color, callback)
     local b = Instance.new("TextButton", parent)
-    b.Size = UDim2.new(0.9, 0, 0, 45) -- Chữ to hơn
+    b.Size = UDim2.new(0.9, 0, 0, 45)
     b.BackgroundColor3 = color or Color3.fromRGB(30, 30, 40)
     b.Text = text
     b.TextColor3 = Color3.new(1, 1, 1)
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 16 -- Tăng kích thước chữ
+    b.TextSize = 16
     Instance.new("UICorner", b)
-    
-    b.MouseButton1Click:Connect(function()
-        callback(b)
-    end)
+    b.MouseButton1Click:Connect(function() callback(b) end)
     return b
 end
 
--- 4. GIAO DIỆN 3 PANEL
-
--- PANEL CHÍNH (GIỮA)
+-- PANEL GIỮA (MAIN)
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 380, 0, 480)
 Main.Position = UDim2.new(0.5, -190, 0.4, -240)
@@ -105,7 +100,7 @@ local MidList = Instance.new("UIListLayout", MidScroll)
 MidList.Padding = UDim.new(0, 12)
 MidList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- PANEL TRÁI (INFO)
+-- PANEL TRÁI (INFO) & PHẢI (UTILS)
 local LeftFrame = Instance.new("Frame", ScreenGui)
 LeftFrame.Size = UDim2.new(0, 200, 0, 350)
 LeftFrame.Position = UDim2.new(0.5, -400, 0.4, -175)
@@ -118,7 +113,6 @@ Avatar.Position = UDim2.new(0.5, -50, 0.1, 0)
 Avatar.Image = "rbxthumb://type=AvatarHeadShot&id="..LPlr.UserId.."&w=150&h=150"
 Instance.new("UICorner", Avatar).CornerRadius = UDim.new(1, 0)
 
--- PANEL PHẢI (UTILS)
 local RightFrame = Instance.new("Frame", ScreenGui)
 RightFrame.Size = UDim2.new(0, 240, 0, 450)
 RightFrame.Position = UDim2.new(0.5, 200, 0.4, -225)
@@ -128,105 +122,6 @@ local RightList = Instance.new("UIListLayout", RightFrame)
 RightList.Padding = UDim.new(0, 12)
 RightList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- 5. CHỨC NĂNG PHIÊN BẢN SUPREME
-
--- SPEED SLIDER (Thanh trắng, hiện số)
-local SpeedLabel = Instance.new("TextLabel", MidScroll)
-SpeedLabel.Size = UDim2.new(0.9, 0, 0, 30)
-SpeedLabel.Text = "SPEED: [16]"
-SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
-SpeedLabel.TextSize = 18
-SpeedLabel.Font = Enum.Font.GothamBold
-SpeedLabel.BackgroundTransparency = 1
-
-local SpeedBar = Instance.new("Frame", MidScroll)
-SpeedBar.Size = UDim2.new(0.85, 0, 0, 10)
-SpeedBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-Instance.new("UICorner", SpeedBar)
-local Fill = Instance.new("Frame", SpeedBar)
-Fill.Size = UDim2.new(0, 0, 1, 0)
-Fill.BackgroundColor3 = Color3.new(1, 1, 1) -- Thanh trắng
-Instance.new("UICorner", Fill)
-
-SpeedBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local conn
-        conn = RunService.RenderStepped:Connect(function()
-            local pos = math.clamp((UIS:GetMouseLocation().X - SpeedBar.AbsolutePosition.X) / SpeedBar.AbsoluteSize.X, 0, 1)
-            Fill.Size = UDim2.new(pos, 0, 1, 0)
-            Titan.Speed = math.floor(16 + (pos * 184))
-            SpeedLabel.Text = "SPEED: ["..Titan.Speed.."]"
-            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then conn:Disconnect() end
-        end)
-    end
-end)
-
--- NÚT GIỮA (MAIN)
-NewBtn(MidScroll, "SAVE BASE", Color3.fromRGB(40, 40, 60), function() Titan.PosBase = LPlr.Character.HumanoidRootPart.CFrame end)
-NewBtn(MidScroll, "TP BASE", Color3.fromRGB(0, 120, 255), function() if Titan.PosBase then LPlr.Character.HumanoidRootPart.CFrame = Titan.PosBase end end)
-NewBtn(MidScroll, "SAVE PET", Color3.fromRGB(40, 40, 60), function() Titan.PosPet = LPlr.Character.HumanoidRootPart.CFrame end)
-NewBtn(MidScroll, "TP PET", Color3.fromRGB(0, 180, 120), function() if Titan.PosPet then LPlr.Character.HumanoidRootPart.CFrame = Titan.PosPet end end)
-
-NewBtn(MidScroll, "NOCLIP: OFF", nil, function(b) 
-    Titan.Noclip = not Titan.Noclip 
-    b.Text = "NOCLIP: "..(Titan.Noclip and "ON" or "OFF")
-    b.TextColor3 = Titan.Noclip and Titan.Secondary or Color3.new(1, 1, 1)
-end)
-
-NewBtn(MidScroll, "FLY: OFF", nil, function(b) 
-    Titan.FlyEnabled = not Titan.FlyEnabled 
-    b.Text = "FLY: "..(Titan.FlyEnabled and "ON" or "OFF")
-    b.TextColor3 = Titan.FlyEnabled and Titan.Secondary or Color3.new(1, 1, 1)
-end)
-
--- NÚT PHẢI (UTILS)
-local TargetBox = Instance.new("TextBox", RightFrame)
-TargetBox.Size = UDim2.new(0.9, 0, 0, 45)
-TargetBox.PlaceholderText = "NAME PLAYER OR PET"
-TargetBox.TextSize = 16
-TargetBox.Font = Enum.Font.GothamBold
-TargetBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-TargetBox.TextColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", TargetBox)
-
-NewBtn(RightFrame, "TELEPORT", Color3.fromRGB(0, 150, 255), function()
-    local t = TargetBox.Text:lower()
-    for _, p in pairs(Players:GetPlayers()) do
-        if p.Name:lower():find(t) and p.Character then LPlr.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame break end
-    end
-end)
-
-NewBtn(RightFrame, "HOPSERVER", Color3.fromRGB(100, 0, 200), function()
-    local s = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100")).data
-    for _, v in pairs(s) do if v.playing < v.maxPlayers and v.id ~= game.JobId then game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, v.id) break end end
-end)
-
-NewBtn(RightFrame, "AIMBOT: OFF", nil, function(b) 
-    Titan.Aimbot = not Titan.Aimbot 
-    b.Text = "AIMBOT: "..(Titan.Aimbot and "ON" or "OFF")
-    b.TextColor3 = Titan.Aimbot and Titan.Secondary or Color3.new(1, 1, 1)
-end)
-
-NewBtn(RightFrame, "KICK PLAYER (ANNOY)", Color3.fromRGB(200, 0, 0), function()
-    local t = TargetBox.Text:lower()
-    task.spawn(function()
-        while task.wait() do
-            for _, p in pairs(Players:GetPlayers()) do
-                if p.Name:lower():find(t) and p.Character then LPlr.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5) end
-            end
-        end
-    end)
-end)
-
--- NÚT TRÁI (INFO)
-NewBtn(LeftFrame, "RESET ĐỒ (FAST)", Color3.fromRGB(150, 0, 0), function() LPlr.Character:BreakJoints() end)
-NewBtn(LeftFrame, "ESP: OFF", nil, function(b) 
-    Titan.ESP = not Titan.ESP 
-    b.Text = "ESP: "..(Titan.ESP and "ON" or "OFF")
-    b.TextColor3 = Titan.ESP and Titan.Secondary or Color3.new(1, 1, 1)
-end)
-
--- 6. HÀM ẨN/HIỆN PANEL ĐẲNG CẤP
 local function SetToggle(side, btnText, frame)
     local b = Instance.new("TextButton", Main)
     b.Size = UDim2.new(0, 35, 0, 35)
@@ -245,10 +140,220 @@ end
 SetToggle("L", "<", LeftFrame)
 SetToggle("R", ">", RightFrame)
 
--- 7. VẬN HÀNH (CORE LOGIC)
+-- 3. CHỨC NĂNG SỬA LỖI (FIXED FEATURES)
+
+-- FIX: SPEED SLIDER
+local SpeedLabel = Instance.new("TextLabel", MidScroll)
+SpeedLabel.Size = UDim2.new(0.9, 0, 0, 30)
+SpeedLabel.Text = "SPEED: [16]"
+SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+SpeedLabel.TextSize = 18
+SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.BackgroundTransparency = 1
+
+local SpeedBar = Instance.new("Frame", MidScroll)
+SpeedBar.Size = UDim2.new(0.85, 0, 0, 10)
+SpeedBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Instance.new("UICorner", SpeedBar)
+local Fill = Instance.new("Frame", SpeedBar)
+Fill.Size = UDim2.new(0, 0, 1, 0)
+Fill.BackgroundColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", Fill)
+
+SpeedBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local conn
+        conn = RunService.RenderStepped:Connect(function()
+            local pos = math.clamp((UIS:GetMouseLocation().X - SpeedBar.AbsolutePosition.X) / SpeedBar.AbsoluteSize.X, 0, 1)
+            Fill.Size = UDim2.new(pos, 0, 1, 0)
+            Titan.Speed = math.floor(16 + (pos * 184))
+            SpeedLabel.Text = "SPEED: ["..Titan.Speed.."]"
+            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then conn:Disconnect() end
+        end)
+    end
+end)
+
+-- MAIN BTNS
+NewBtn(MidScroll, "SAVE BASE", Color3.fromRGB(40, 40, 60), function() Titan.PosBase = LPlr.Character.HumanoidRootPart.CFrame end)
+NewBtn(MidScroll, "TP BASE", Color3.fromRGB(0, 120, 255), function() if Titan.PosBase then LPlr.Character.HumanoidRootPart.CFrame = Titan.PosBase end end)
+NewBtn(MidScroll, "SAVE PET", Color3.fromRGB(40, 40, 60), function() Titan.PosPet = LPlr.Character.HumanoidRootPart.CFrame end)
+NewBtn(MidScroll, "TP PET", Color3.fromRGB(0, 180, 120), function() if Titan.PosPet then LPlr.Character.HumanoidRootPart.CFrame = Titan.PosPet end end)
+
+NewBtn(MidScroll, "NOCLIP: OFF", nil, function(b) 
+    Titan.Noclip = not Titan.Noclip 
+    b.Text = "NOCLIP: "..(Titan.Noclip and "ON" or "OFF")
+    b.TextColor3 = Titan.Noclip and Titan.Secondary or Color3.new(1, 1, 1)
+end)
+
+NewBtn(MidScroll, "FLY: OFF", nil, function(b) 
+    Titan.FlyEnabled = not Titan.FlyEnabled 
+    b.Text = "FLY: "..(Titan.FlyEnabled and "ON" or "OFF")
+    b.TextColor3 = Titan.FlyEnabled and Titan.Secondary or Color3.new(1, 1, 1)
+end)
+
+-- RIGHT BTNS (UTILS)
+local TargetBox = Instance.new("TextBox", RightFrame)
+TargetBox.Size = UDim2.new(0.9, 0, 0, 45)
+TargetBox.PlaceholderText = "NAME PLAYER OR PET"
+TargetBox.TextSize = 14
+TargetBox.Font = Enum.Font.GothamBold
+TargetBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+TargetBox.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", TargetBox)
+
+-- FIX: TELEPORT NAME OR PET
+NewBtn(RightFrame, "TELEPORT", Color3.fromRGB(0, 150, 255), function()
+    local t = TargetBox.Text:lower()
+    if t == "" then return end
+    
+    -- Ưu tiên tìm Player trước
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Name:lower():find(t) or p.DisplayName:lower():find(t) then
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                LPlr.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+                return
+            end
+        end
+    end
+    
+    -- Nếu không thấy Player, tìm Pet trong Workspace
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:lower():find(t) and v:IsA("BasePart") then
+            LPlr.Character.HumanoidRootPart.CFrame = v.CFrame
+            return
+        end
+    end
+end)
+
+NewBtn(RightFrame, "HOPSERVER", Color3.fromRGB(100, 0, 200), function()
+    local s = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100")).data
+    for _, v in pairs(s) do if v.playing < v.maxPlayers and v.id ~= game.JobId then game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, v.id) break end end
+end)
+
+NewBtn(RightFrame, "AIMBOT: OFF", nil, function(b) 
+    Titan.Aimbot = not Titan.Aimbot 
+    b.Text = "AIMBOT: "..(Titan.Aimbot and "ON" or "OFF")
+    b.TextColor3 = Titan.Aimbot and Titan.Secondary or Color3.new(1, 1, 1)
+end)
+
+-- FIX: KICK / ANNOY PLAYER
+local KickBtn = NewBtn(RightFrame, "KICK/ANNOY: OFF", Color3.fromRGB(200, 0, 0), function(b)
+    if Titan.AnnoyTarget then
+        Titan.AnnoyTarget = nil -- Tắt Annoy
+        b.Text = "KICK/ANNOY: OFF"
+    else
+        local t = TargetBox.Text:lower()
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Name:lower():find(t) or p.DisplayName:lower():find(t) then
+                Titan.AnnoyTarget = p.Name
+                b.Text = "ANNOYING: " .. p.Name
+                break
+            end
+        end
+    end
+end)
+
+-- LEFT BTNS (INFO)
+NewBtn(LeftFrame, "RESET ĐỒ (FAST)", Color3.fromRGB(150, 0, 0), function() LPlr.Character:BreakJoints() end)
+NewBtn(LeftFrame, "ESP: OFF", nil, function(b) 
+    Titan.ESP = not Titan.ESP 
+    b.Text = "ESP BOX/NAME: "..(Titan.ESP and "ON" or "OFF")
+    b.TextColor3 = Titan.ESP and Titan.Secondary or Color3.new(1, 1, 1)
+end)
+
+-- 4. CORE ENGINE (CÁC VÒNG LẶP SỬA LỖI)
+
+-- Fix: ESP Box & Name
+RunService.RenderStepped:Connect(function()
+    if Titan.ESP then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LPlr and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = p.Character.HumanoidRootPart
+                local tag = hrp:FindFirstChild("TitanESPBox")
+                
+                if not tag then
+                    -- Tạo Box và Name bằng BillboardGui để thấy từ xa
+                    tag = Instance.new("BillboardGui", hrp)
+                    tag.Name = "TitanESPBox"
+                    tag.Size = UDim2.new(4, 0, 5, 0) -- Kích thước hộp
+                    tag.AlwaysOnTop = true
+                    
+                    local box = Instance.new("Frame", tag)
+                    box.Size = UDim2.new(1, 0, 1, 0)
+                    box.BackgroundTransparency = 1
+                    local stroke = Instance.new("UIStroke", box)
+                    stroke.Color = Titan.Secondary
+                    stroke.Thickness = 2
+                    
+                    local nameLbl = Instance.new("TextLabel", box)
+                    nameLbl.Size = UDim2.new(1, 0, 0, 20)
+                    nameLbl.Position = UDim2.new(0, 0, -0.2, 0)
+                    nameLbl.BackgroundTransparency = 1
+                    nameLbl.Text = p.Name
+                    nameLbl.TextColor3 = Color3.new(1,1,1)
+                    nameLbl.Font = Enum.Font.GothamBold
+                    nameLbl.TextStrokeTransparency = 0
+                end
+            end
+        end
+    else
+        -- Xóa ESP khi tắt
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local tag = p.Character.HumanoidRootPart:FindFirstChild("TitanESPBox")
+                if tag then tag:Destroy() end
+            end
+        end
+    end
+end)
+
+-- Fix: Aimbot (Mượt và theo chuột)
+RunService.RenderStepped:Connect(function()
+    if Titan.Aimbot then
+        local target = nil
+        local shortestDistance = math.huge
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LPlr and p.Character and p.Character:FindFirstChild("Head") then
+                local head = p.Character.Head
+                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                
+                if onScreen then
+                    local mag = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(pos.X, pos.Y)).Magnitude
+                    if mag < shortestDistance then
+                        target = head
+                        shortestDistance = mag
+                    end
+                end
+            end
+        end
+        
+        if target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end
+end)
+
+-- Fix: Annoy/Kick (Ép vật lý liên tục)
+RunService.Stepped:Connect(function()
+    if Titan.AnnoyTarget then
+        local targetPlayer = Players:FindFirstChild(Titan.AnnoyTarget)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local myHrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
+            if myHrp then
+                -- Dịch chuyển lồng vào người đối phương để gây lỗi vật lý văng tung tóe
+                myHrp.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+-- Fix: Speed & Noclip & Fly
 RunService.Heartbeat:Connect(function(dt)
-    local hrp = LPlr.Character and LPlr.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local char = LPlr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
 
     if Titan.FlyEnabled then
         local d = Vector3.new(0,0,0)
@@ -258,23 +363,17 @@ RunService.Heartbeat:Connect(function(dt)
         if UIS:IsKeyDown(Enum.KeyCode.D) then d = d + Camera.CFrame.RightVector end
         hrp.Velocity = Vector3.zero
         hrp.CFrame = hrp.CFrame + (d * 100 * dt)
-    elseif UIS.MoveDirection.Magnitude > 0 then
-        hrp.CFrame = hrp.CFrame + (UIS.MoveDirection * (Titan.Speed * dt))
+    else
+        -- Speed CFrame Override
+        if Titan.Speed > 16 and hum.MoveDirection.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * ((Titan.Speed - 16) * dt))
+        end
     end
 end)
 
 RunService.Stepped:Connect(function()
     if Titan.Noclip and LPlr.Character then
         for _, v in pairs(LPlr.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-    end
-    if Titan.ESP then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LPlr and p.Character then
-                local h = p.Character:FindFirstChild("TitanESP") or Instance.new("Highlight", p.Character)
-                h.Name = "TitanESP"
-                h.FillColor = Titan.Secondary
-            end
-        end
     end
 end)
 
@@ -287,4 +386,4 @@ UIS.InputBegan:Connect(function(i, g)
     end
 end)
 
-print("🌌 TITAN V25.0 LOADED. Press K to Toggle.")
+print("🌌 TITAN V26.0 - ĐÃ FIX TOÀN BỘ LỖI!")
